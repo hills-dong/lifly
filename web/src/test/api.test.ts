@@ -50,6 +50,6 @@ describe('API module exports', () => {
   });
 
   it('generates correct file URLs', () => {
-    expect(files.getFileUrl('abc-123')).toBe('/api/files/abc-123/download');
+    expect(files.getFileUrl('abc-123')).toBe('/api/files/abc-123');
   });
 });

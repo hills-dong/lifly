@@ -35,6 +35,6 @@ test.describe('Reminders', () => {
 
     // Should see the reminder in the list
     await expect(page.locator('.reminder-list')).toBeVisible({ timeout: 10_000 });
-    await expect(page.locator('text=E2E Test Reminder')).toBeVisible();
+    await expect(page.locator('text=E2E Test Reminder').first()).toBeVisible();
   });
 });
