@@ -1,0 +1,36 @@
+services:
+  server:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgresql://lifly:lifly@db:5432/lifly
+      - FILE_STORAGE_PATH=/data/files
+      - LLM_API_KEY=${LLM_API_KEY}
+      - LLM_API_URL=${LLM_API_URL}
+      - JWT_SECRET=${JWT_SECRET:-default-dev-secret-change-in-production}
+    volumes:
+      - file_storage:/data/files
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_USER=lifly
+      - POSTGRES_PASSWORD=lifly
+      - POSTGRES_DB=lifly
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifly"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  file_storage:
