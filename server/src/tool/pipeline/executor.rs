@@ -1,7 +1,21 @@
 use serde_json::Value;
+use sqlx::PgPool;
+use uuid::Uuid;
 
 use crate::common::{AppConfig, AppError, AppResult};
+use crate::data::repo as data_repo;
+use crate::intelligence::repo as reminder_repo;
 use crate::tool::models::AtomicCapability;
+
+/// Context about the currently executing pipeline, provided to the executor
+/// so it can persist data objects and reminders.
+#[derive(Debug, Clone)]
+pub struct ExecutionContext {
+    pub pool: PgPool,
+    pub tool_id: Uuid,
+    pub pipeline_id: Uuid,
+    pub user_id: Uuid,
+}
 
 /// Dispatches step execution to the appropriate runtime.
 pub struct StepExecutor;
@@ -12,9 +26,10 @@ impl StepExecutor {
         capability: &AtomicCapability,
         input: Value,
         config: &AppConfig,
+        ctx: &ExecutionContext,
     ) -> AppResult<Value> {
         match capability.runtime_type.as_str() {
-            "builtin" => Self::execute_builtin(&capability.name, input).await,
+            "builtin" => Self::execute_builtin(&capability.name, input, ctx).await,
             "remote_llm" => {
                 Self::execute_remote_llm(input, &capability.runtime_config, config).await
             }
@@ -26,7 +41,7 @@ impl StepExecutor {
     }
 
     /// Execute a builtin capability.
-    async fn execute_builtin(name: &str, input: Value) -> AppResult<Value> {
+    async fn execute_builtin(name: &str, input: Value, ctx: &ExecutionContext) -> AppResult<Value> {
         match name {
             "text_input" => {
                 // Pass through the raw content.
@@ -39,50 +54,142 @@ impl StepExecutor {
                     "result": raw_content,
                 }))
             }
+            "image_upload" => {
+                // Pass through image data.
+                let data = input
+                    .get("data")
+                    .or_else(|| input.get("raw_content"))
+                    .cloned()
+                    .unwrap_or(Value::Null);
+                Ok(serde_json::json!({
+                    "result": data,
+                }))
+            }
             "data_object_write" => {
-                // In a full implementation this would call the data module's repo
-                // to write a DataObject. For now, acknowledge the write request.
-                let object_type = input
-                    .get("object_type")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("unknown");
                 let data = input.get("data").cloned().unwrap_or(Value::Null);
+                let attributes = if data.is_object() {
+                    data.clone()
+                } else {
+                    // Wrap non-object data in a standard structure.
+                    serde_json::json!({ "content": data })
+                };
+
+                let obj = data_repo::create_data_object(
+                    &ctx.pool,
+                    ctx.tool_id,
+                    Some(ctx.pipeline_id),
+                    None, // parent_id
+                    None, // category_id
+                    &attributes,
+                )
+                .await
+                .map_err(AppError::Database)?;
 
                 tracing::info!(
-                    object_type = object_type,
-                    "data_object_write: would persist data object"
+                    data_object_id = %obj.id,
+                    tool_id = %ctx.tool_id,
+                    "data_object_write: persisted data object"
                 );
 
                 Ok(serde_json::json!({
                     "status": "written",
-                    "object_type": object_type,
-                    "data": data,
+                    "data_object_id": obj.id,
+                    "data": attributes,
+                }))
+            }
+            "data_object_query" => {
+                // Query data objects for this tool.
+                let query = crate::data::DataObjectQuery {
+                    tool_id: Some(ctx.tool_id),
+                    category_id: None,
+                    status: Some("active".to_string()),
+                    limit: input.get("limit").and_then(|v| v.as_i64()),
+                    offset: None,
+                };
+                let objects = data_repo::list_data_objects(&ctx.pool, &query)
+                    .await
+                    .map_err(AppError::Database)?;
+
+                let results: Vec<Value> = objects
+                    .into_iter()
+                    .map(|o| {
+                        serde_json::json!({
+                            "id": o.id,
+                            "attributes": o.attributes,
+                            "status": o.status,
+                            "created_at": o.created_at,
+                        })
+                    })
+                    .collect();
+
+                Ok(serde_json::json!({
+                    "result": results,
+                    "count": results.len(),
                 }))
             }
             "reminder_schedule" => {
-                // Create a reminder if a due_date is present.
                 let title = input
                     .get("title")
                     .and_then(|v| v.as_str())
                     .unwrap_or("Untitled reminder");
-                let due_date = input.get("due_date").cloned();
+                let due_date_str = input
+                    .get("due_date")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| {
+                        AppError::Validation(
+                            "reminder_schedule requires a due_date string field".to_string(),
+                        )
+                    })?;
 
-                if due_date.is_none() || due_date.as_ref().map_or(true, |v| v.is_null()) {
-                    return Err(AppError::Validation(
-                        "reminder_schedule requires a due_date field".to_string(),
-                    ));
-                }
+                let trigger_at = chrono::DateTime::parse_from_rfc3339(due_date_str)
+                    .map(|dt| dt.with_timezone(&chrono::Utc))
+                    .or_else(|_| {
+                        // Try parsing as naive date "YYYY-MM-DD"
+                        chrono::NaiveDate::parse_from_str(due_date_str, "%Y-%m-%d")
+                            .map(|d| {
+                                d.and_hms_opt(9, 0, 0)
+                                    .unwrap()
+                                    .and_utc()
+                            })
+                    })
+                    .map_err(|_| {
+                        AppError::Validation(format!(
+                            "invalid due_date format: {due_date_str}, expected RFC3339 or YYYY-MM-DD"
+                        ))
+                    })?;
+
+                let description = input.get("description").and_then(|v| v.as_str());
+
+                // Get the data_object_id if one was created earlier in the pipeline.
+                let data_object_id = input
+                    .get("data_object_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| uuid::Uuid::parse_str(s).ok());
+
+                let reminder = reminder_repo::create_reminder(
+                    &ctx.pool,
+                    ctx.user_id,
+                    data_object_id,
+                    title,
+                    description,
+                    trigger_at,
+                    None, // repeat_rule
+                )
+                .await
+                .map_err(AppError::Database)?;
 
                 tracing::info!(
+                    reminder_id = %reminder.id,
                     title = title,
-                    due_date = ?due_date,
-                    "reminder_schedule: would create reminder"
+                    trigger_at = %trigger_at,
+                    "reminder_schedule: created reminder"
                 );
 
                 Ok(serde_json::json!({
                     "status": "scheduled",
+                    "reminder_id": reminder.id,
                     "title": title,
-                    "due_date": due_date,
+                    "due_date": due_date_str,
                 }))
             }
             other => Err(AppError::Internal(format!(

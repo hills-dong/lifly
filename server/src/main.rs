@@ -6,15 +6,18 @@ mod intelligence;
 mod tool;
 
 use std::path::Path;
+use std::sync::Arc;
 
 use axum::Router;
 use axum::middleware;
+use axum::routing::get;
 use chrono::Utc;
 use sqlx::postgres::PgPoolOptions;
+use tokio::sync::broadcast;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
-use common::{AppConfig, AppState, JwtSecret};
+use common::{AppConfig, AppState, JwtSecret, WsEvent};
 
 fn static_files_path() -> String {
     std::env::var("static_dir").unwrap_or_else(|_| "./static".to_string())
@@ -49,12 +52,17 @@ async fn main() {
         .await
         .expect("failed to run database migrations");
 
+    // Create WebSocket broadcast channel.
+    let (ws_tx, _) = broadcast::channel::<WsEvent>(256);
+    let ws_tx = Arc::new(ws_tx);
+
     // Build shared application state.
     let jwt_secret = JwtSecret(config.jwt_secret.clone());
     let state = AppState {
         pool: pool.clone(),
         jwt_secret: jwt_secret.clone(),
         config: config.clone(),
+        ws_tx: ws_tx.clone(),
     };
 
     // Build the application router by merging all module routes.
@@ -64,7 +72,8 @@ async fn main() {
         .merge(tool::routes())
         .merge(data::routes())
         .merge(data::category_routes())
-        .merge(intelligence::routes());
+        .merge(intelligence::routes())
+        .route("/api/ws", get(common::ws::ws_handler));
 
     // Serve static files from STATIC_FILES_PATH if the directory exists.
     let static_dir = static_files_path();

@@ -153,7 +153,7 @@ async fn create_raw_input_handler(
     repo::update_raw_input_status(&state.pool, raw_input.id, "processing").await?;
 
     // Spawn pipeline execution in the background.
-    let engine = PipelineEngine::new(state.pool.clone(), state.config.clone());
+    let engine = PipelineEngine::new(state.pool.clone(), state.config.clone(), state.ws_tx.clone());
     let pipeline_id = pipeline.id;
     tokio::spawn(async move {
         if let Err(e) = engine.execute(pipeline_id).await {

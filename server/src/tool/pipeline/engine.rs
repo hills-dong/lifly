@@ -1,36 +1,42 @@
 use sqlx::PgPool;
+use std::sync::Arc;
 use std::time::Instant;
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
-use crate::common::{AppError, AppResult, AppConfig};
+use crate::common::{AppConfig, AppError, AppResult, WsEvent};
 use crate::tool::repo;
 
-use super::executor::StepExecutor;
+use super::executor::{ExecutionContext, StepExecutor};
 
 /// Orchestrates the execution of a pipeline by running each step in order.
 pub struct PipelineEngine {
     pool: PgPool,
     config: AppConfig,
+    ws_tx: Arc<broadcast::Sender<WsEvent>>,
 }
 
 impl PipelineEngine {
     /// Create a new pipeline engine.
-    pub fn new(pool: PgPool, config: AppConfig) -> Self {
-        Self { pool, config }
+    pub fn new(pool: PgPool, config: AppConfig, ws_tx: Arc<broadcast::Sender<WsEvent>>) -> Self {
+        Self { pool, config, ws_tx }
+    }
+
+    /// Broadcast a pipeline status event via WebSocket.
+    fn broadcast_status(&self, pipeline_id: Uuid, status: &str, error: Option<&str>) {
+        let event = WsEvent {
+            event_type: "pipeline.status".to_string(),
+            payload: serde_json::json!({
+                "pipeline_id": pipeline_id,
+                "status": status,
+                "error": error,
+            }),
+        };
+        // Ignore send errors (no receivers connected).
+        let _ = self.ws_tx.send(event);
     }
 
     /// Execute a pipeline end-to-end.
-    ///
-    /// 1. Load the pipeline record.
-    /// 2. Load the tool version's steps (ordered by `step_order`).
-    /// 3. For each step:
-    ///    a. Create a `StepExecution` record (status: running).
-    ///    b. Resolve input from pipeline context + `input_mapping`.
-    ///    c. Execute the step via `StepExecutor`.
-    ///    d. Update the `StepExecution` with output.
-    ///    e. Merge output into pipeline context via `output_mapping`.
-    ///    f. Handle failure based on the `on_failure` policy.
-    /// 4. Update pipeline status to completed or failed.
     pub async fn execute(&self, pipeline_id: Uuid) -> AppResult<()> {
         // 1. Load the pipeline.
         let pipeline = repo::find_pipeline_by_id(&self.pool, pipeline_id)
@@ -39,6 +45,7 @@ impl PipelineEngine {
 
         // Mark pipeline as running.
         repo::update_pipeline_status(&self.pool, pipeline_id, "running", None).await?;
+        self.broadcast_status(pipeline_id, "running", None);
 
         // Seed the context with the raw input content.
         let mut context = pipeline
@@ -47,14 +54,25 @@ impl PipelineEngine {
             .unwrap_or_else(|| serde_json::json!({}));
 
         // Load raw input and inject into context.
-        if let Some(raw_input) = repo::find_raw_input_by_id(&self.pool, pipeline.raw_input_id).await? {
+        let raw_input = repo::find_raw_input_by_id(&self.pool, pipeline.raw_input_id).await?;
+        let user_id = raw_input.as_ref().map(|r| r.user_id).unwrap_or_default();
+
+        if let Some(ref ri) = raw_input {
             context["raw_input"] = serde_json::json!({
-                "id": raw_input.id,
-                "input_type": raw_input.input_type,
-                "raw_content": raw_input.raw_content,
-                "metadata": raw_input.metadata,
+                "id": ri.id,
+                "input_type": ri.input_type,
+                "raw_content": ri.raw_content,
+                "metadata": ri.metadata,
             });
         }
+
+        // Build the execution context for the step executor.
+        let exec_ctx = ExecutionContext {
+            pool: self.pool.clone(),
+            tool_id: pipeline.tool_id,
+            pipeline_id,
+            user_id,
+        };
 
         // 2. Load the ordered steps for this version.
         let steps = repo::list_steps_by_version(&self.pool, pipeline.tool_version_id).await?;
@@ -111,7 +129,7 @@ impl PipelineEngine {
             let max_attempts = (step.retry_count + 1) as usize;
 
             for attempt in 0..max_attempts {
-                match StepExecutor::execute(&capability, step_input.clone(), &self.config).await {
+                match StepExecutor::execute(&capability, step_input.clone(), &self.config, &exec_ctx).await {
                     Ok(output) => {
                         result = Some(output);
                         last_error = None;
@@ -188,6 +206,7 @@ impl PipelineEngine {
                             "failed",
                         )
                         .await?;
+                        self.broadcast_status(pipeline_id, "failed", Some(&error_msg));
                         return Err(AppError::Internal(format!(
                             "pipeline failed at step {}: {error_msg}",
                             step.id
@@ -200,21 +219,17 @@ impl PipelineEngine {
         // 4. Pipeline completed successfully.
         repo::update_pipeline_status(&self.pool, pipeline_id, "completed", None).await?;
         repo::update_raw_input_status(&self.pool, pipeline.raw_input_id, "completed").await?;
+        self.broadcast_status(pipeline_id, "completed", None);
 
         tracing::info!(pipeline_id = %pipeline_id, "pipeline completed successfully");
         Ok(())
     }
 
     /// Evaluate a condition against the current pipeline context.
-    ///
-    /// The condition JSONB is expected to have the form:
-    /// ```json
-    /// { "field": "raw_input.input_type", "equals": "text" }
-    /// ```
     fn evaluate_condition(condition: &serde_json::Value, context: &serde_json::Value) -> bool {
         let field = match condition.get("field").and_then(|f| f.as_str()) {
             Some(f) => f,
-            None => return true, // No field specified means the condition is always met.
+            None => return true,
         };
 
         let actual = Self::resolve_path(context, field);
@@ -232,13 +247,7 @@ impl PipelineEngine {
         true
     }
 
-    /// Resolve input for a step by extracting values from the pipeline context
-    /// according to the input_mapping.
-    ///
-    /// The `input_mapping` JSONB maps output keys to context paths:
-    /// ```json
-    /// { "text": "raw_input.raw_content", "type": "raw_input.input_type" }
-    /// ```
+    /// Resolve input for a step by extracting values from the pipeline context.
     fn resolve_input(
         context: &serde_json::Value,
         input_mapping: &Option<serde_json::Value>,
@@ -255,7 +264,6 @@ impl PipelineEngine {
                     let value = Self::resolve_path(context, path);
                     resolved.insert(key.clone(), value);
                 } else {
-                    // Use the value directly if it's not a string path.
                     resolved.insert(key.clone(), path_value.clone());
                 }
             }
@@ -264,7 +272,7 @@ impl PipelineEngine {
         serde_json::Value::Object(resolved)
     }
 
-    /// Navigate a dotted path (e.g. `"raw_input.raw_content"`) through a JSON value.
+    /// Navigate a dotted path through a JSON value.
     fn resolve_path(value: &serde_json::Value, path: &str) -> serde_json::Value {
         let mut current = value;
         for segment in path.split('.') {
@@ -277,11 +285,6 @@ impl PipelineEngine {
     }
 
     /// Apply the output_mapping to merge step output into the pipeline context.
-    ///
-    /// The `output_mapping` JSONB maps context keys to output paths:
-    /// ```json
-    /// { "extracted_data": "result", "summary": "result.summary" }
-    /// ```
     fn apply_output_mapping(
         context: &mut serde_json::Value,
         output: &serde_json::Value,
@@ -290,7 +293,6 @@ impl PipelineEngine {
         let mapping = match output_mapping {
             Some(m) if m.is_object() => m,
             _ => {
-                // No mapping — merge the entire output under a "last_output" key.
                 if let Some(ctx) = context.as_object_mut() {
                     ctx.insert("last_output".to_string(), output.clone());
                 }

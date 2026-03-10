@@ -17,7 +17,9 @@ export function useWebSocket(onMessage?: MessageHandler) {
   const connect = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const token = localStorage.getItem('token');
-    const url = `${protocol}//${window.location.host}/ws${token ? `?token=${token}` : ''}`;
+    const apiBase = import.meta.env.VITE_API_URL || '';
+    const wsHost = apiBase ? new URL(apiBase).host : window.location.host;
+    const url = `${protocol}//${wsHost}/api/ws${token ? `?token=${token}` : ''}`;
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
