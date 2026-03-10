@@ -66,12 +66,23 @@ impl StepExecutor {
                 }))
             }
             "data_object_write" => {
-                let data = input.get("data").cloned().unwrap_or(Value::Null);
-                let attributes = if data.is_object() {
-                    data.clone()
+                // Use "data" if present, otherwise fall back to "fallback_data".
+                let raw_data = input
+                    .get("data")
+                    .filter(|v| !v.is_null())
+                    .or_else(|| input.get("fallback_data"))
+                    .cloned()
+                    .unwrap_or(Value::Null);
+
+                // If the data is a JSON string, try to parse it.
+                let attributes = if let Some(s) = raw_data.as_str() {
+                    serde_json::from_str(s).unwrap_or_else(|_| {
+                        serde_json::json!({ "content": s })
+                    })
+                } else if raw_data.is_object() {
+                    raw_data
                 } else {
-                    // Wrap non-object data in a standard structure.
-                    serde_json::json!({ "content": data })
+                    serde_json::json!({ "content": raw_data })
                 };
 
                 let obj = data_repo::create_data_object(
@@ -128,10 +139,16 @@ impl StepExecutor {
                 }))
             }
             "reminder_schedule" => {
-                let title = input
+                let title_raw = input
                     .get("title")
                     .and_then(|v| v.as_str())
                     .unwrap_or("Untitled reminder");
+                // Truncate long titles.
+                let title = if title_raw.len() > 128 {
+                    &title_raw[..128]
+                } else {
+                    title_raw
+                };
                 let due_date_str = input
                     .get("due_date")
                     .and_then(|v| v.as_str())
