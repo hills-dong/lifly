@@ -1,6 +1,6 @@
 # M1 ERD 裁剪设计
 
-> Version: 1.0 | Date: 2026-03-09 | Status: Approved
+> Version: 1.1 | Date: 2026-03-10 | Status: Approved (updated after M1 completion)
 >
 > 基于 erd.md v0.4，针对 M1 骨架验证里程碑进行实体裁剪。
 
@@ -105,22 +105,27 @@ erDiagram
 
 | 实体 | M1 职责 | 备注 |
 |------|---------|------|
-| **AtomicCapability** | 注册 M1 预置原子能力 | 运行时类型仅 `builtin` 和 `script`，不含 `local_llm` / `remote_llm` |
+| **AtomicCapability** | 注册 M1 预置原子能力 | 运行时类型：`builtin`、`remote_llm`、`script`（script M1 未实现） |
 | **CapabilityParam** | 定义每个原子能力的输入输出契约 | 不变 |
 
-M1 预置原子能力：
+M1 预置原子能力（7 个）：
 
-- 采集类：`text_input`、`image_upload`
-- 处理类：`ocr_extract`（外部 API 或脚本）
-- 存储类：`data_object_write`、`file_write`
-- 使用类：`data_object_query`、`reminder_schedule`
+- 采集类：`text_input`、`image_upload`（builtin）
+- 处理类：`todo_parse`（remote_llm, Gemini 3.1 Pro, mode=text）、`ocr_extract`（remote_llm, Gemini 3.1 Pro, mode=vision）、`image_process`（remote_llm, Gemini 3.1 Flash Image, mode=image_generation）
+- 存储类：`data_object_write`（builtin）
+- 使用类：`reminder_schedule`（builtin）
+
+**LLM 模型选择：**
+- **Gemini 3.1 Pro** — 文本理解和视觉任务（todo 解析、证件 OCR）
+- **Gemini 3.1 Flash Image** — 图像生成/处理（证件图片标准化：对比度增强、裁剪矫正）
+- 通过 Google AI Studio API 调用，`?key=API_KEY` 认证
 
 ### 4.3 Data 域
 
 | 实体 | M1 职责 | 备注 |
 |------|---------|------|
 | **DataObject** | Todo 项和证件记录统一存储 | `attributes` 结构由 Tool.data_schema 约束 |
-| **FileStorage** | 证件原图、裁剪图的文件引用 | Todo 场景暂不用 |
+| **FileStorage** | 证件原图、标准化后证件图的文件引用 | Todo 场景暂不用 |
 | **Category** | 证件按类别组织（身份证/护照/驾照） | `tool_id` 隔离，Todo 可选用 |
 
 ### 4.4 Tool 域 — 定义层
@@ -129,7 +134,20 @@ M1 预置原子能力：
 |------|---------|------|
 | **Tool** | 预置 Todo 和证件管理两个工具 | `source = system`，`status = active` |
 | **ToolVersion** | 每个预置工具一个初始版本 | M1 无演化，版本固定 |
-| **ToolStep** | 定义每个工具的处理步骤编排 | Todo 较简，证件含 OCR 步骤 |
+| **ToolStep** | 定义每个工具的处理步骤编排 | Todo 4 步，证件 5 步（含图片标准化） |
+
+**证件管理 Pipeline（5 步）：**
+1. `image_upload` (builtin) — 捕获原始证件图片
+2. `ocr_extract` (Gemini 3.1 Pro, vision) — 提取证件类型、号码、姓名、有效期、签发国
+3. `image_process` (Gemini 3.1 Flash Image, image_generation) — 对比度增强 + 裁剪矫正 → 标准证件图
+4. `data_object_write` (builtin) — 持久化结构化数据 + 处理后图片引用
+5. `reminder_schedule` (builtin) — 根据有效期创建过期提醒
+
+**Todo List Pipeline（4 步）：**
+1. `text_input` (builtin) — 捕获用户文本
+2. `todo_parse` (Gemini 3.1 Pro, text) — 提取标题、描述、截止日期、优先级
+3. `data_object_write` (builtin) — 持久化结构化数据
+4. `reminder_schedule` (builtin) — 根据截止日期创建提醒
 
 ### 4.5 Tool 域 — 执行层
 
