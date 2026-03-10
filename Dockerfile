@@ -10,7 +10,7 @@ RUN cargo build --release
 FROM node:20 AS frontend
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@latest --activate
-COPY web/package.json web/pnpm-lock.yaml* ./
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml* ./
 RUN pnpm install --frozen-lockfile || pnpm install
 COPY web/ .
 RUN pnpm build
@@ -21,6 +21,6 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 COPY --from=backend /app/server/target/release/lifly-server /usr/local/bin/
 COPY --from=backend /app/server/migrations /srv/migrations
 COPY --from=frontend /app/dist /srv/web
-ENV STATIC_FILES_PATH=/srv/web
+ENV STATIC_DIR=/srv/web
 EXPOSE 8080
 CMD ["lifly-server"]

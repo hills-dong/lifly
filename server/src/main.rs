@@ -20,7 +20,9 @@ use tower_http::trace::TraceLayer;
 use common::{AppConfig, AppState, JwtSecret, WsEvent};
 
 fn static_files_path() -> String {
-    std::env::var("static_dir").unwrap_or_else(|_| "./static".to_string())
+    std::env::var("STATIC_DIR")
+        .or_else(|_| std::env::var("static_dir"))
+        .unwrap_or_else(|_| "./static".to_string())
 }
 
 #[tokio::main]
