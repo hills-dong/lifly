@@ -111,15 +111,17 @@ export const categories = {
 // --- Files ---
 
 export const files = {
-  uploadFile: (dataObjectId: string, file: File) => {
+  uploadFile: (file: File, dataObjectId?: string, role?: string) => {
     const formData = new FormData();
     formData.append('file', file);
+    if (dataObjectId) formData.append('data_object_id', dataObjectId);
+    if (role) formData.append('role', role);
     return client
-      .post<FileStorage>(`/api/data-objects/${dataObjectId}/files`, formData, {
+      .post<FileStorage>('/api/files/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       .then((r) => r.data);
   },
 
-  getFileUrl: (fileId: string) => `/api/files/${fileId}/download`,
+  getFileUrl: (fileId: string) => `/api/files/${fileId}`,
 };
