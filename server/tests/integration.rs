@@ -314,8 +314,16 @@ async fn test_create_raw_input_triggers_pipeline() {
 
     let pipeline_id = body["data"]["pipeline_id"].as_str().unwrap();
 
-    // Wait briefly for the pipeline to complete (it runs in a background task).
-    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+    // Wait for the pipeline to complete (it runs in a background task).
+    // LLM steps may take several seconds if an API key is configured.
+    for _ in 0..15 {
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        let (_, check) = auth_get(&app, &format!("/api/pipelines/{pipeline_id}"), &token).await;
+        let st = check["data"]["status"].as_str().unwrap_or("");
+        if st == "completed" || st == "failed" {
+            break;
+        }
+    }
 
     // Check the pipeline status.
     let (status, body) = auth_get(&app, &format!("/api/pipelines/{pipeline_id}"), &token).await;

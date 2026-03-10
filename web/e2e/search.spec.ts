@@ -60,10 +60,17 @@ test.describe('Search', () => {
     await createTodoViaApi(request, baseURL, token, searchTerm);
 
     await page.goto('/search');
-    await page.fill('.search-input', searchTerm);
-    await page.click('button[type="submit"]');
 
-    await expect(page.locator('.table')).toBeVisible({ timeout: 10_000 });
+    // Retry search a few times — LLM pipeline may still be finishing under load
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await page.fill('.search-input', searchTerm);
+      await page.click('button[type="submit"]');
+      const found = await page.locator('.table').isVisible({ timeout: 5_000 }).catch(() => false);
+      if (found) break;
+      await page.waitForTimeout(2000);
+    }
+
+    await expect(page.locator('.table')).toBeVisible({ timeout: 5_000 });
 
     // Click View on first result
     await page.locator('.table tbody tr .btn', { hasText: 'View' }).first().click();

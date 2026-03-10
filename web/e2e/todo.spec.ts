@@ -61,8 +61,8 @@ test.describe('Todo Tool', () => {
     await expect(page).toHaveURL(`/tools/${TODO_TOOL_ID}`, { timeout: 20_000 });
 
     // The new todo should appear in the list
-    await expect(page.locator('.todo-list')).toBeVisible({ timeout: 5_000 });
-    await expect(page.locator('.todo-item', { hasText: todoText })).toBeVisible();
+    await expect(page.locator('.todo-list')).toBeVisible({ timeout: 10_000 });
+    await expect(page.locator('.todo-item', { hasText: todoText })).toBeVisible({ timeout: 10_000 });
   });
 
   test('toggle todo done status', async ({ page, request }) => {

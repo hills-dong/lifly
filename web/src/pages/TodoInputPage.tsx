@@ -9,10 +9,11 @@ export default function TodoInputPage() {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState('');
+  const [pipelineId, setPipelineId] = useState('');
   const [error, setError] = useState('');
 
   useWebSocket((msg) => {
-    if (msg.type === 'pipeline.status') {
+    if (msg.type === 'pipeline.status' && pipelineId && msg.payload.pipeline_id === pipelineId) {
       const status = msg.payload.status as string;
       setPipelineStatus(status);
       if (status === 'completed') {
@@ -27,11 +28,12 @@ export default function TodoInputPage() {
     setSubmitting(true);
     setError('');
     try {
-      await rawInputs.createRawInput({
+      const result = await rawInputs.createRawInput({
         tool_id: toolId,
         input_type: 'text',
         raw_content: content.trim(),
       });
+      if (result.pipeline_id) setPipelineId(result.pipeline_id);
       setPipelineStatus('submitted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create todo');

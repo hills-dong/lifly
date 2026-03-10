@@ -59,11 +59,12 @@ export interface DataObject {
 
 export interface FileStorage {
   id: string;
-  data_object_id: string;
-  filename: string;
-  content_type: string;
-  size: number;
-  storage_path: string;
+  data_object_id: string | null;
+  raw_input_id: string | null;
+  file_name: string;
+  mime_type: string;
+  file_size: number;
+  role: string;
   created_at: string;
 }
 

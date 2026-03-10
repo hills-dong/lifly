@@ -77,7 +77,7 @@ impl StepExecutor {
                     .unwrap_or(Value::Null);
 
                 // If the data is a JSON string, try to parse it.
-                let attributes = if let Some(s) = raw_data.as_str() {
+                let parsed = if let Some(s) = raw_data.as_str() {
                     serde_json::from_str(s).unwrap_or_else(|_| {
                         serde_json::json!({ "content": s })
                     })
@@ -85,6 +85,42 @@ impl StepExecutor {
                     raw_data
                 } else {
                     serde_json::json!({ "content": raw_data })
+                };
+
+                // If parsed data has a single-item array wrapper (e.g. {"todos": [{...}]}),
+                // unwrap the first element and merge with the wrapper's other fields.
+                let attributes = if let Some(obj) = parsed.as_object() {
+                    let arrays: Vec<_> = obj
+                        .iter()
+                        .filter(|(_, v)| v.is_array())
+                        .collect();
+                    if arrays.len() == 1 {
+                        let (_, arr_val) = arrays[0];
+                        if let Some(arr) = arr_val.as_array() {
+                            if arr.len() == 1 {
+                                if let Some(item) = arr[0].as_object() {
+                                    // Merge non-array fields with the item
+                                    let mut merged = item.clone();
+                                    for (k, v) in obj {
+                                        if !v.is_array() {
+                                            merged.insert(k.clone(), v.clone());
+                                        }
+                                    }
+                                    Value::Object(merged)
+                                } else {
+                                    parsed
+                                }
+                            } else {
+                                parsed
+                            }
+                        } else {
+                            parsed
+                        }
+                    } else {
+                        parsed
+                    }
+                } else {
+                    parsed
                 };
 
                 let obj = data_repo::create_data_object(
@@ -257,7 +293,7 @@ impl StepExecutor {
                 let text = input
                     .get("text")
                     .and_then(|v| v.as_str())
-                    .unwrap_or("Describe this image.");
+                    .unwrap_or("Analyze this image and follow the instructions in your system prompt.");
                 gemini::build_image_request(image_base64, mime_type, text, system_prompt, temperature)
             }
             "image_generation" => {
@@ -339,12 +375,46 @@ impl StepExecutor {
             }))
         } else {
             let text_result = gemini::extract_text(&gemini_resp).unwrap_or_default();
+            // Try to parse the text as JSON so downstream steps can access fields.
+            let result_value = Self::try_parse_json_response(&text_result);
             Ok(serde_json::json!({
-                "result": text_result,
+                "result": result_value,
                 "model": model,
                 "raw_response": response_body,
             }))
         }
+    }
+
+    /// Try to parse an LLM text response as JSON.
+    /// Handles raw JSON, markdown-fenced JSON (```json ... ```), and plain text.
+    fn try_parse_json_response(text: &str) -> Value {
+        let trimmed = text.trim();
+
+        // Try direct parse first.
+        if let Ok(val) = serde_json::from_str::<Value>(trimmed) {
+            if val.is_object() || val.is_array() {
+                return val;
+            }
+        }
+
+        // Try extracting from markdown code fences: ```json ... ``` or ``` ... ```
+        if let Some(start) = trimmed.find("```") {
+            let after_fence = &trimmed[start + 3..];
+            // Skip optional language tag (e.g., "json")
+            let content_start = after_fence.find('\n').map(|i| i + 1).unwrap_or(0);
+            let content = &after_fence[content_start..];
+            if let Some(end) = content.find("```") {
+                let json_str = content[..end].trim();
+                if let Ok(val) = serde_json::from_str::<Value>(json_str) {
+                    if val.is_object() || val.is_array() {
+                        return val;
+                    }
+                }
+            }
+        }
+
+        // Return as plain string if not parseable.
+        Value::String(text.to_string())
     }
 
     /// Execute a script-based capability. Not implemented for M1.

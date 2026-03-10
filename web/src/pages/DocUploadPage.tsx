@@ -19,8 +19,10 @@ export default function DocUploadPage() {
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState('');
+  const [pipelineId, setPipelineId] = useState('');
   const [error, setError] = useState('');
   const [resultObject, setResultObject] = useState<DataObject | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const loadResult = useCallback(async () => {
     if (!toolId) return;
@@ -36,7 +38,7 @@ export default function DocUploadPage() {
   }, [toolId]);
 
   useWebSocket((msg) => {
-    if (msg.type === 'pipeline.status') {
+    if (msg.type === 'pipeline.status' && pipelineId && msg.payload.pipeline_id === pipelineId) {
       const status = msg.payload.status as string;
       setPipelineStatus(status);
       if (status === 'completed') {
@@ -81,7 +83,10 @@ export default function DocUploadPage() {
         reader.readAsDataURL(file);
       });
 
-      await rawInputs.createRawInput({
+      // Keep image preview for result display
+      setImagePreview(`data:${file.type};base64,${base64}`);
+
+      const result = await rawInputs.createRawInput({
         tool_id: toolId,
         input_type: 'image',
         raw_content: base64,
@@ -91,6 +96,7 @@ export default function DocUploadPage() {
           size: file.size,
         },
       });
+      if (result.pipeline_id) setPipelineId(result.pipeline_id);
       setPipelineStatus('submitted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -102,8 +108,10 @@ export default function DocUploadPage() {
     setFile(null);
     setSubmitting(false);
     setPipelineStatus('');
+    setPipelineId('');
     setError('');
     setResultObject(null);
+    setImagePreview(null);
   };
 
   // ---------- Extraction results view ----------
@@ -115,6 +123,12 @@ export default function DocUploadPage() {
         <h1>Extraction Results</h1>
 
         <div className="alert alert-success">Pipeline completed — fields extracted</div>
+
+        {imagePreview && (
+          <div className="doc-image-preview">
+            <img src={imagePreview} alt="Uploaded document" style={{ maxWidth: '400px', borderRadius: '8px', border: '1px solid #ddd' }} />
+          </div>
+        )}
 
         <div className="detail-grid">
           {CERT_FIELDS.map(({ key, label }) => (

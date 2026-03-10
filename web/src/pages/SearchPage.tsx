@@ -5,7 +5,14 @@ import type { DataObject } from '../api/types';
 
 function displayTitle(obj: DataObject): string {
   const a = obj.attributes;
-  return String(a?.title || a?.content || a?.full_name || a?.cert_type || 'Untitled');
+  const candidates = [a?.content, a?.title, a?.full_name, a?.cert_type];
+  for (const c of candidates) {
+    if (c != null) {
+      const s = String(c);
+      if (s.length > 0 && s.length <= 200) return s;
+    }
+  }
+  return 'Untitled';
 }
 
 export default function SearchPage() {

@@ -5,7 +5,14 @@ import type { DataObject, FileStorage } from '../api/types';
 
 function displayTitle(obj: DataObject): string {
   const a = obj.attributes;
-  return String(a?.title || a?.content || a?.full_name || a?.cert_type || 'Untitled');
+  const candidates = [a?.content, a?.title, a?.full_name, a?.cert_type];
+  for (const c of candidates) {
+    if (c != null) {
+      const s = String(c);
+      if (s.length > 0 && s.length <= 200) return s;
+    }
+  }
+  return 'Untitled';
 }
 
 export default function DataObjectPage() {
@@ -114,12 +121,18 @@ export default function DataObjectPage() {
 
           <h2>Attributes</h2>
           <div className="attributes-view">
-            {Object.entries(obj.attributes || {}).map(([key, value]) => (
-              <div className="detail-row" key={key}>
-                <span className="detail-label">{key}</span>
-                <span>{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
-              </div>
-            ))}
+            {Object.entries(obj.attributes || {}).map(([key, value]) => {
+              const str = typeof value === 'object' ? JSON.stringify(value) : String(value ?? '');
+              // Detect base64 image data and truncate display
+              const isBase64Image = typeof value === 'string' && value.length > 500 &&
+                /^[A-Za-z0-9+/=\s]+$/.test(value.slice(0, 100));
+              return (
+                <div className="detail-row" key={key}>
+                  <span className="detail-label">{key}</span>
+                  <span>{isBase64Image ? `[Image data, ${(str.length / 1024).toFixed(0)} KB]` : str}</span>
+                </div>
+              );
+            })}
             {Object.keys(obj.attributes || {}).length === 0 && (
               <p className="empty-state">No attributes.</p>
             )}
@@ -132,10 +145,10 @@ export default function DataObjectPage() {
                 {associatedFiles.map((f) => (
                   <li key={f.id}>
                     <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
-                      {f.filename}
+                      {f.file_name}
                     </a>
                     <span className="file-meta">
-                      {f.content_type} &middot; {(f.size / 1024).toFixed(1)} KB
+                      {f.mime_type} &middot; {(f.file_size / 1024).toFixed(1)} KB
                     </span>
                   </li>
                 ))}
