@@ -15,7 +15,6 @@ import type {
   CreateCategoryRequest,
   UpdateCategoryRequest,
   FileStorage,
-  PaginatedResponse,
 } from './types';
 
 // --- Auth ---
@@ -41,7 +40,7 @@ export const tools = {
 
 export const dataObjects = {
   listDataObjects: (params?: { tool_id?: string; type?: string; status?: string; limit?: number; offset?: number }) =>
-    client.get<PaginatedResponse<DataObject>>('/api/data-objects', { params }).then((r) => r.data),
+    client.get<DataObject[]>('/api/data-objects', { params }).then((r) => r.data),
 
   getDataObject: (id: string) =>
     client.get<DataObject>(`/api/data-objects/${id}`).then((r) => r.data),
@@ -52,8 +51,8 @@ export const dataObjects = {
   deleteDataObject: (id: string) =>
     client.delete(`/api/data-objects/${id}`).then((r) => r.data),
 
-  searchDataObjects: (params: { query: string; tool_id?: string; type?: string; limit?: number; offset?: number }) =>
-    client.get<PaginatedResponse<DataObject>>('/api/data-objects/search', { params }).then((r) => r.data),
+  searchDataObjects: (params: { q: string; tool_id?: string; limit?: number }) =>
+    client.get<DataObject[]>('/api/data-objects/search', { params }).then((r) => r.data),
 };
 
 // --- Raw Inputs ---

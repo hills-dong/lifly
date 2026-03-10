@@ -95,12 +95,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 489,
+                      "duration": 488,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:31.691Z",
+                      "startTime": "2026-03-10T15:32:07.945Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -129,12 +129,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 641,
+                      "duration": 660,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:32.286Z",
+                      "startTime": "2026-03-10T15:32:08.529Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -163,12 +163,12 @@
                       "workerIndex": 0,
                       "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 2604,
+                      "duration": 2417,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:32.956Z",
+                      "startTime": "2026-03-10T15:32:09.217Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -186,6 +186,227 @@
       ]
     },
     {
+      "title": "data-object.spec.ts",
+      "file": "data-object.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Data Object Detail",
+          "file": "data-object.spec.ts",
+          "line": 6,
+          "column": 6,
+          "specs": [
+            {
+              "title": "view data object detail from todo list",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 2057,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:07.985Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ce2e16e4fed37e8a57b2-8a735fd3c4c16b442747",
+              "file": "data-object.spec.ts",
+              "line": 11,
+              "column": 3
+            },
+            {
+              "title": "display attributes as key-value pairs",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1899,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:10.200Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ce2e16e4fed37e8a57b2-7f06e9bb5b6be093637b",
+              "file": "data-object.spec.ts",
+              "line": 31,
+              "column": 3
+            },
+            {
+              "title": "edit attributes in JSON editor",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1912,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:12.114Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ce2e16e4fed37e8a57b2-59d54f16c755361b446a",
+              "file": "data-object.spec.ts",
+              "line": 46,
+              "column": 3
+            },
+            {
+              "title": "save edited attributes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1876,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:14.043Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ce2e16e4fed37e8a57b2-aa1f7a55ff6096b75cd3",
+              "file": "data-object.spec.ts",
+              "line": 70,
+              "column": 3
+            },
+            {
+              "title": "back to tool link works",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1703,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:15.928Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ce2e16e4fed37e8a57b2-a9454c6a4a7e9bd7cc31",
+              "file": "data-object.spec.ts",
+              "line": 94,
+              "column": 3
+            },
+            {
+              "title": "delete data object with confirmation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1833,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:17.649Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "ce2e16e4fed37e8a57b2-d68203655bc7e71bed34",
+              "file": "data-object.spec.ts",
+              "line": 109,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
       "title": "document.spec.ts",
       "file": "document.spec.ts",
       "column": 0,
@@ -195,7 +416,7 @@
         {
           "title": "Document Upload",
           "file": "document.spec.ts",
-          "line": 6,
+          "line": 21,
           "column": 6,
           "specs": [
             {
@@ -211,15 +432,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
-                      "parallelIndex": 1,
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
                       "status": "passed",
-                      "duration": 779,
+                      "duration": 735,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:31.713Z",
+                      "startTime": "2026-03-10T15:32:08.075Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -229,11 +450,11 @@
               ],
               "id": "043b8193fc05a3cc01fa-34ad18dc0a180ee8e392",
               "file": "document.spec.ts",
-              "line": 11,
+              "line": 26,
               "column": 3
             },
             {
-              "title": "drop zone is visible",
+              "title": "drop zone is visible with prompt text",
               "ok": true,
               "tags": [],
               "tests": [
@@ -245,15 +466,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
-                      "parallelIndex": 1,
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
                       "status": "passed",
-                      "duration": 749,
+                      "duration": 672,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:32.634Z",
+                      "startTime": "2026-03-10T15:32:08.973Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -261,9 +482,232 @@
                   "status": "expected"
                 }
               ],
-              "id": "043b8193fc05a3cc01fa-ddddcd8ab786666fe9ab",
+              "id": "043b8193fc05a3cc01fa-211f22993d52083667fd",
               "file": "document.spec.ts",
-              "line": 16,
+              "line": 31,
+              "column": 3
+            },
+            {
+              "title": "upload button is disabled without file",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "passed",
+                      "duration": 596,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:09.660Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "043b8193fc05a3cc01fa-a71a26effa77d5f389e6",
+              "file": "document.spec.ts",
+              "line": 38,
+              "column": 3
+            },
+            {
+              "title": "select file via input shows file info",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 2,
+                      "status": "failed",
+                      "duration": 10662,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.drop-zone')\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.drop-zone')\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.drop-zone')\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.drop-zone')\u001b[22m\n\n    at /home/hills/projects/lifly/web/e2e/document.spec.ts:48:46",
+                        "location": {
+                          "file": "/home/hills/projects/lifly/web/e2e/document.spec.ts",
+                          "column": 46,
+                          "line": 48
+                        },
+                        "snippet": "  46 |   test('select file via input shows file info', async ({ page }) => {\n  47 |     await page.goto(`/tools/${DOC_TOOL_ID}/upload-doc`);\n> 48 |     await expect(page.locator('.drop-zone')).toBeVisible({ timeout: 10_000 });\n     |                                              ^\n  49 |\n  50 |     const testPng = createTestPng();\n  51 |     const fileInput = page.locator('input[type=\"file\"]');"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "/home/hills/projects/lifly/web/e2e/document.spec.ts",
+                            "column": 46,
+                            "line": 48
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('.drop-zone')\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('.drop-zone')\u001b[22m\n\n\n  46 |   test('select file via input shows file info', async ({ page }) => {\n  47 |     await page.goto(`/tools/${DOC_TOOL_ID}/upload-doc`);\n> 48 |     await expect(page.locator('.drop-zone')).toBeVisible({ timeout: 10_000 });\n     |                                              ^\n  49 |\n  50 |     const testPng = createTestPng();\n  51 |     const fileInput = page.locator('input[type=\"file\"]');\n    at /home/hills/projects/lifly/web/e2e/document.spec.ts:48:46"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:10.270Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/home/hills/projects/lifly/web/test-results/document-Document-Upload-s-76147-e-via-input-shows-file-info-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/home/hills/projects/lifly/web/test-results/document-Document-Upload-s-76147-e-via-input-shows-file-info-chromium/error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "/home/hills/projects/lifly/web/test-results/document-Document-Upload-s-76147-e-via-input-shows-file-info-chromium/trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "/home/hills/projects/lifly/web/e2e/document.spec.ts",
+                        "column": 46,
+                        "line": 48
+                      }
+                    },
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 621,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-03-10T15:32:21.916Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "flaky"
+                }
+              ],
+              "id": "043b8193fc05a3cc01fa-e71ae8cfa639a5a2ec75",
+              "file": "document.spec.ts",
+              "line": 46,
+              "column": 3
+            },
+            {
+              "title": "upload file and see pipeline status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 617,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:22.633Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "043b8193fc05a3cc01fa-3fc6497f25afc8687d2e",
+              "file": "document.spec.ts",
+              "line": 63,
+              "column": 3
+            },
+            {
+              "title": "upload completes — capture result for verification",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 10668,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:23.268Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "043b8193fc05a3cc01fa-0f29aa5d33c3d5292f8f",
+              "file": "document.spec.ts",
+              "line": 83,
+              "column": 3
+            },
+            {
+              "title": "navigate to doc tool page shows Upload Document button",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 488,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:33.946Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "043b8193fc05a3cc01fa-d21184869f38500284b9",
+              "file": "document.spec.ts",
+              "line": 108,
               "column": 3
             }
           ]
@@ -296,15 +740,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 2,
-                      "parallelIndex": 2,
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
                       "status": "passed",
-                      "duration": 781,
+                      "duration": 865,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:31.844Z",
+                      "startTime": "2026-03-10T15:32:07.969Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -315,6 +759,40 @@
               "id": "aa75b1db4695422e71e4-cd9f34f9da2ae3335a8d",
               "file": "reminders.spec.ts",
               "line": 9,
+              "column": 3
+            },
+            {
+              "title": "toggle new reminder form visibility",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 910,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:08.951Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aa75b1db4695422e71e4-025a7bfbd634296aa7d1",
+              "file": "reminders.spec.ts",
+              "line": 15,
               "column": 3
             },
             {
@@ -330,15 +808,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 2,
-                      "parallelIndex": 2,
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
                       "status": "passed",
-                      "duration": 1051,
+                      "duration": 1069,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:32.731Z",
+                      "startTime": "2026-03-10T15:32:09.878Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -348,7 +826,143 @@
               ],
               "id": "aa75b1db4695422e71e4-6e313111d762001f73e8",
               "file": "reminders.spec.ts",
-              "line": 15,
+              "line": 34,
+              "column": 3
+            },
+            {
+              "title": "reminder shows title, description, and due date",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 837,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:10.961Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aa75b1db4695422e71e4-01b57a9b242b0e9fc88c",
+              "file": "reminders.spec.ts",
+              "line": 57,
+              "column": 3
+            },
+            {
+              "title": "dismiss a reminder",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2006,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:11.814Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aa75b1db4695422e71e4-527ebd720b8bd40202d7",
+              "file": "reminders.spec.ts",
+              "line": 82,
+              "column": 3
+            },
+            {
+              "title": "delete a reminder with confirmation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 846,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:13.842Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aa75b1db4695422e71e4-1a058f363b1889714c4a",
+              "file": "reminders.spec.ts",
+              "line": 113,
+              "column": 3
+            },
+            {
+              "title": "filter reminders by status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2140,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:14.707Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "aa75b1db4695422e71e4-419c45b649d5ca230395",
+              "file": "reminders.spec.ts",
+              "line": 137,
               "column": 3
             }
           ]
@@ -381,15 +995,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 3,
-                      "parallelIndex": 3,
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 789,
+                      "duration": 602,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:31.688Z",
+                      "startTime": "2026-03-10T15:32:11.661Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -415,15 +1029,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 3,
-                      "parallelIndex": 3,
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
                       "status": "passed",
-                      "duration": 903,
+                      "duration": 700,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:32.604Z",
+                      "startTime": "2026-03-10T15:32:12.279Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -434,6 +1048,108 @@
               "id": "a088064de9fe351eef5f-e0f9bebed973a18a29f6",
               "file": "search.spec.ts",
               "line": 15,
+              "column": 3
+            },
+            {
+              "title": "empty query does not trigger search",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 576,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:12.987Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a088064de9fe351eef5f-edf940eed7f418294158",
+              "file": "search.spec.ts",
+              "line": 26,
+              "column": 3
+            },
+            {
+              "title": "search with valid term returns results",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1748,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:13.580Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a088064de9fe351eef5f-bd1e938247079e8f5398",
+              "file": "search.spec.ts",
+              "line": 38,
+              "column": 3
+            },
+            {
+              "title": "click View in search results navigates to detail",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 1649,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:15.342Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "a088064de9fe351eef5f-dd2459b64a15908d2d71",
+              "file": "search.spec.ts",
+              "line": 56,
               "column": 3
             }
           ]
@@ -466,15 +1182,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
-                      "parallelIndex": 1,
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
                       "status": "passed",
-                      "duration": 642,
+                      "duration": 548,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:33.431Z",
+                      "startTime": "2026-03-10T15:32:16.870Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -500,15 +1216,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
-                      "parallelIndex": 1,
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
                       "status": "passed",
-                      "duration": 656,
+                      "duration": 592,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:34.083Z",
+                      "startTime": "2026-03-10T15:32:17.430Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -518,7 +1234,41 @@
               ],
               "id": "7c2290300587baf0dfac-217848db2cbe4a204b9d",
               "file": "todo.spec.ts",
-              "line": 18,
+              "line": 17,
+              "column": 3
+            },
+            {
+              "title": "empty content cannot be submitted",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 570,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:18.031Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7c2290300587baf0dfac-80285b7808f83fa5ace0",
+              "file": "todo.spec.ts",
+              "line": 24,
               "column": 3
             },
             {
@@ -534,15 +1284,15 @@
                   "projectName": "chromium",
                   "results": [
                     {
-                      "workerIndex": 1,
-                      "parallelIndex": 1,
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
                       "status": "passed",
-                      "duration": 588,
+                      "duration": 555,
                       "errors": [],
                       "stdout": [],
                       "stderr": [],
                       "retry": 0,
-                      "startTime": "2026-03-10T14:15:34.761Z",
+                      "startTime": "2026-03-10T15:32:18.616Z",
                       "annotations": [],
                       "attachments": []
                     }
@@ -552,7 +1302,143 @@
               ],
               "id": "7c2290300587baf0dfac-c10b071caa679ba6786b",
               "file": "todo.spec.ts",
-              "line": 25,
+              "line": 38,
+              "column": 3
+            },
+            {
+              "title": "submit todo and redirect to list with new item",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 2552,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:19.184Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7c2290300587baf0dfac-658808f86f7696ce03f8",
+              "file": "todo.spec.ts",
+              "line": 52,
+              "column": 3
+            },
+            {
+              "title": "toggle todo done status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 1780,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:21.748Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7c2290300587baf0dfac-14436ba6a39d1ce9801b",
+              "file": "todo.spec.ts",
+              "line": 68,
+              "column": 3
+            },
+            {
+              "title": "filter todos by status",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 4697,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:23.551Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7c2290300587baf0dfac-02f4bfd88a3455c9a909",
+              "file": "todo.spec.ts",
+              "line": 91,
+              "column": 3
+            },
+            {
+              "title": "click View navigates to data object detail",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 3,
+                      "status": "passed",
+                      "duration": 1605,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-10T15:32:28.258Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7c2290300587baf0dfac-f26b0971f06868f73164",
+              "file": "todo.spec.ts",
+              "line": 116,
               "column": 3
             }
           ]
@@ -562,11 +1448,11 @@
   ],
   "errors": [],
   "stats": {
-    "startTime": "2026-03-10T14:15:30.570Z",
-    "duration": 5073.443,
-    "expected": 12,
+    "startTime": "2026-03-10T15:32:06.814Z",
+    "duration": 27679.140000000003,
+    "expected": 35,
     "skipped": 0,
     "unexpected": 0,
-    "flaky": 0
+    "flaky": 1
   }
 }

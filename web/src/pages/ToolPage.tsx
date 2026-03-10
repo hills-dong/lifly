@@ -3,6 +3,12 @@ import { useParams, Link } from 'react-router-dom';
 import { tools as toolsApi, dataObjects as doApi } from '../api';
 import type { Tool, DataObject } from '../api/types';
 
+/** Extract a display title from a data object's attributes. */
+function displayTitle(obj: DataObject): string {
+  const a = obj.attributes;
+  return String(a?.title || a?.content || a?.full_name || a?.cert_type || 'Untitled');
+}
+
 export default function ToolPage() {
   const { id } = useParams<{ id: string }>();
   const [tool, setTool] = useState<Tool | null>(null);
@@ -19,7 +25,7 @@ export default function ToolPage() {
     ])
       .then(([t, res]) => {
         setTool(t);
-        setObjects(res.items || []);
+        setObjects(Array.isArray(res) ? res : []);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -44,8 +50,9 @@ export default function ToolPage() {
   if (error) return <div className="alert alert-error">{error}</div>;
   if (!tool) return <div className="alert alert-error">Tool not found</div>;
 
-  const isTodo = tool.slug === 'todo' || tool.name.toLowerCase().includes('todo');
-  const isDoc = tool.slug === 'id-doc' || tool.name.toLowerCase().includes('doc');
+  const nameLower = (tool.name + ' ' + tool.description).toLowerCase();
+  const isTodo = nameLower.includes('todo');
+  const isDoc = nameLower.includes('证件') || nameLower.includes('document') || nameLower.includes('id-doc');
 
   return (
     <div>
@@ -90,7 +97,7 @@ export default function ToolPage() {
                   checked={!!obj.attributes?.done}
                   onChange={() => handleToggleTodo(obj)}
                 />
-                <span>{obj.title}</span>
+                <span>{displayTitle(obj)}</span>
               </label>
               <Link to={`/data-objects/${obj.id}`} className="btn btn-text btn-sm">
                 View
@@ -102,9 +109,9 @@ export default function ToolPage() {
         <div className="card-grid">
           {objects.map((obj) => (
             <Link to={`/data-objects/${obj.id}`} key={obj.id} className="card card-link">
-              <h3>{obj.title}</h3>
+              <h3>{displayTitle(obj)}</h3>
               <p className="card-meta">
-                {obj.type} &middot; {new Date(obj.created_at).toLocaleDateString()}
+                {obj.status} &middot; {new Date(obj.created_at).toLocaleDateString()}
               </p>
               <span className={`badge badge-${obj.status}`}>{obj.status}</span>
             </Link>
@@ -124,8 +131,8 @@ export default function ToolPage() {
           <tbody>
             {objects.map((obj) => (
               <tr key={obj.id}>
-                <td>{obj.title}</td>
-                <td>{obj.type}</td>
+                <td>{displayTitle(obj)}</td>
+                <td>{obj.status}</td>
                 <td><span className={`badge badge-${obj.status}`}>{obj.status}</span></td>
                 <td>{new Date(obj.created_at).toLocaleDateString()}</td>
                 <td>

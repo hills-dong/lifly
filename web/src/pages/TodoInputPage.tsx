@@ -29,8 +29,8 @@ export default function TodoInputPage() {
     try {
       await rawInputs.createRawInput({
         tool_id: toolId,
-        type: 'todo',
-        content: content.trim(),
+        input_type: 'text',
+        raw_content: content.trim(),
       });
       setPipelineStatus('submitted');
     } catch (err) {

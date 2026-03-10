@@ -3,6 +3,11 @@ import { Link } from 'react-router-dom';
 import { dataObjects } from '../api';
 import type { DataObject } from '../api/types';
 
+function displayTitle(obj: DataObject): string {
+  const a = obj.attributes;
+  return String(a?.title || a?.content || a?.full_name || a?.cert_type || 'Untitled');
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<DataObject[]>([]);
@@ -16,8 +21,8 @@ export default function SearchPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await dataObjects.searchDataObjects({ query: query.trim() });
-      setResults(res.items || []);
+      const res = await dataObjects.searchDataObjects({ q: query.trim() });
+      setResults(Array.isArray(res) ? res : []);
       setSearched(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -64,8 +69,8 @@ export default function SearchPage() {
           <tbody>
             {results.map((obj) => (
               <tr key={obj.id}>
-                <td>{obj.title}</td>
-                <td>{obj.type}</td>
+                <td>{displayTitle(obj)}</td>
+                <td>{obj.status}</td>
                 <td><span className={`badge badge-${obj.status}`}>{obj.status}</span></td>
                 <td>{new Date(obj.created_at).toLocaleDateString()}</td>
                 <td>

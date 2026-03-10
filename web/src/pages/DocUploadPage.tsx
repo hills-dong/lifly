@@ -25,9 +25,10 @@ export default function DocUploadPage() {
   const loadResult = useCallback(async () => {
     if (!toolId) return;
     try {
-      const page = await doApi.listDataObjects({ tool_id: toolId, limit: 1 });
-      if (page.items.length > 0) {
-        setResultObject(page.items[0]);
+      const list = await doApi.listDataObjects({ tool_id: toolId, limit: 1 });
+      const items = Array.isArray(list) ? list : [];
+      if (items.length > 0) {
+        setResultObject(items[0]);
       }
     } catch {
       // silently ignore — the user can still navigate to the tool page
@@ -82,11 +83,11 @@ export default function DocUploadPage() {
 
       await rawInputs.createRawInput({
         tool_id: toolId,
-        type: 'document',
-        content: base64,
+        input_type: 'image',
+        raw_content: base64,
         metadata: {
+          mime_type: file.type,
           filename: file.name,
-          content_type: file.type,
           size: file.size,
         },
       });

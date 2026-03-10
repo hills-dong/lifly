@@ -1,0 +1,48 @@
+# Lifly 项目准则
+
+## 核心文档
+
+- **`docs/prd.md`（产品需求文档）和 `docs/tdd.md`（技术设计文档）是项目的唯一权威来源。**
+- 所有开发工作以这两个文档为准，任何开发过程中的变更（需求调整、技术方案修改、架构变动、新增功能等）都必须同步更新到对应文档中。
+- 变更先更新文档，再提交代码，保持文档与代码始终一致。
+
+## 测试
+
+- **所有测试必须由 AI 自主完成，禁止要求用户手动运行任何测试。** 包括单元测试、集成测试、E2E 测试等，都应在开发过程中由 AI 直接执行并验证结果。
+- 后端测试: `cd server && cargo test -- --test-threads=1`
+- 前端测试: `cd web && pnpm test`
+- LLM 集成测试（需要 API key）: `cd server && LLM_API_KEY=$LLM_API_KEY cargo test --test llm_integration -- --test-threads=1`
+
+## 开发环境
+
+- 端口 8080 是 coder 进程占用的，**绝对不能 kill**，否则会导致整个会话崩溃
+- Docker 服务映射到端口 9527（9527:8080）
+- 数据库: PostgreSQL (pgvector/pgvector:pg16)
+
+## 前后端一致性
+
+- **修改 API 接口时，必须同步检查并更新前端类型定义、调用方和后端处理方三方的字段名和数据结构。** 以后端 struct 定义为权威来源，前端 TypeScript 类型必须严格对齐。
+- 新增或修改 API 端点后，必须有至少一个测试覆盖真实的请求/响应字段匹配（不能仅 mock）。
+- **API 响应结构必须明确：** 后端返回数组就用数组接收，不要在前端假设分页格式（`{items, total}`）。每次新增 API 调用时先验证实际响应结构。
+- **查询参数名必须对齐后端：** 前端 params 的 key 必须与后端 Query struct 的字段名完全一致（如后端用 `q` 前端就不能用 `query`）。
+- **前端不要假设后端未返回的字段存在：** TypeScript interface 中的每个字段都必须有后端对应。需要派生显示内容时，从 `attributes` 等实际字段中提取。
+
+## 测试质量
+
+- **E2E 测试断言必须区分成功和失败状态。** 不能用宽泛的选择器（如 `.alert`）同时匹配成功和错误提示。正确做法是断言具体的成功状态（如 `.alert-success`）或具体的文本内容。
+- 测试通过不等于功能正确——写完测试后，必须人工审查截图或输出，确认测试验证的是预期行为而非巧合匹配。
+
+## 复盘机制
+
+- **研发过程中所有不符合预期的情况（bug、测试误判、环境问题等），在解决后必须复盘根因，并将教训整理为简洁的通用准则补充到本文件中。** 目的是将个案经验转化为系统性防线，避免同类问题再次出现。
+
+## 代码规范
+
+- 后端: Rust + Axum，遵循现有模块结构（identity / capability / tool / data / intelligence / common）
+- 前端: React 19 + TypeScript + Vite，使用 pnpm
+- 文档统一放在 `docs/superpowers/` 下（specs/ 和 plans/）
+
+## Git
+
+- 提交信息使用英文，格式: `type: description`（feat / fix / chore / docs / test）
+- 不要在没有明确指示的情况下自动 push

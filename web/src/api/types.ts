@@ -48,9 +48,9 @@ export interface ToolVersion {
 export interface DataObject {
   id: string;
   tool_id: string;
-  user_id: string;
-  type: string;
-  title: string;
+  pipeline_id?: string;
+  parent_id?: string;
+  category_id?: string;
   attributes: Record<string, unknown>;
   status: string;
   created_at: string;
@@ -131,8 +131,8 @@ export interface LoginResponse {
 
 export interface CreateRawInputRequest {
   tool_id: string;
-  type: string;
-  content: string;
+  input_type: string;
+  raw_content: string;
   metadata?: Record<string, unknown>;
 }
 
@@ -153,8 +153,8 @@ export interface UpdateReminderRequest {
 }
 
 export interface UpdateDataObjectRequest {
-  title?: string;
   attributes?: Record<string, unknown>;
+  category_id?: string;
   status?: string;
 }
 

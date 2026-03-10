@@ -3,12 +3,16 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { dataObjects as doApi, files as filesApi } from '../api';
 import type { DataObject, FileStorage } from '../api/types';
 
+function displayTitle(obj: DataObject): string {
+  const a = obj.attributes;
+  return String(a?.title || a?.content || a?.full_name || a?.cert_type || 'Untitled');
+}
+
 export default function DataObjectPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [obj, setObj] = useState<DataObject | null>(null);
   const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
   const [editAttrs, setEditAttrs] = useState('');
   const [associatedFiles, setAssociatedFiles] = useState<FileStorage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -20,9 +24,7 @@ export default function DataObjectPage() {
       .getDataObject(id)
       .then((data) => {
         setObj(data);
-        setEditTitle(data.title);
         setEditAttrs(JSON.stringify(data.attributes, null, 2));
-        // Files would be embedded or fetched separately
         if ((data as DataObject & { files?: FileStorage[] }).files) {
           setAssociatedFiles((data as DataObject & { files?: FileStorage[] }).files!);
         }
@@ -37,7 +39,6 @@ export default function DataObjectPage() {
     try {
       const attrs = JSON.parse(editAttrs);
       const updated = await doApi.updateDataObject(id, {
-        title: editTitle,
         attributes: attrs,
       });
       setObj(updated);
@@ -70,15 +71,6 @@ export default function DataObjectPage() {
         <form onSubmit={handleSave} className="form">
           <h1>Edit Item</h1>
           <div className="form-group">
-            <label htmlFor="title">Title</label>
-            <input
-              id="title"
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-            />
-          </div>
-          <div className="form-group">
             <label htmlFor="attrs">Attributes (JSON)</label>
             <textarea
               id="attrs"
@@ -98,7 +90,7 @@ export default function DataObjectPage() {
       ) : (
         <div>
           <div className="page-header">
-            <h1>{obj.title}</h1>
+            <h1>{displayTitle(obj)}</h1>
             <div className="page-actions">
               <button className="btn btn-secondary" onClick={() => setEditing(true)}>Edit</button>
               <button className="btn btn-danger" onClick={handleDelete}>Delete</button>
@@ -106,10 +98,6 @@ export default function DataObjectPage() {
           </div>
 
           <div className="detail-grid">
-            <div className="detail-row">
-              <span className="detail-label">Type</span>
-              <span>{obj.type}</span>
-            </div>
             <div className="detail-row">
               <span className="detail-label">Status</span>
               <span className={`badge badge-${obj.status}`}>{obj.status}</span>
