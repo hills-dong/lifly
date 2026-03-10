@@ -1,24 +1,45 @@
-import { useState, useRef, type DragEvent } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { rawInputs } from '../api';
+import { useState, useRef, useCallback, type DragEvent } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { rawInputs, dataObjects as doApi } from '../api';
+import type { DataObject } from '../api/types';
 import { useWebSocket } from '../hooks/useWebSocket';
+
+const CERT_FIELDS: { key: string; label: string }[] = [
+  { key: 'cert_type', label: '证件类型' },
+  { key: 'cert_number', label: '证件号码' },
+  { key: 'full_name', label: '姓名' },
+  { key: 'expiry_date', label: '有效期' },
+  { key: 'issuing_country', label: '签发国家' },
+];
 
 export default function DocUploadPage() {
   const { id: toolId } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [pipelineStatus, setPipelineStatus] = useState('');
   const [error, setError] = useState('');
+  const [resultObject, setResultObject] = useState<DataObject | null>(null);
+
+  const loadResult = useCallback(async () => {
+    if (!toolId) return;
+    try {
+      const page = await doApi.listDataObjects({ tool_id: toolId, limit: 1 });
+      if (page.items.length > 0) {
+        setResultObject(page.items[0]);
+      }
+    } catch {
+      // silently ignore — the user can still navigate to the tool page
+    }
+  }, [toolId]);
 
   useWebSocket((msg) => {
     if (msg.type === 'pipeline.status') {
       const status = msg.payload.status as string;
       setPipelineStatus(status);
       if (status === 'completed') {
-        setTimeout(() => navigate(`/tools/${toolId}`), 1000);
+        loadResult();
       }
     }
   });
@@ -34,7 +55,7 @@ export default function DocUploadPage() {
     e.preventDefault();
     setDragging(false);
     const dropped = e.dataTransfer.files[0];
-    if (dropped) setFile(dropped);
+    if (dropped && dropped.type.startsWith('image/')) setFile(dropped);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,10 +68,14 @@ export default function DocUploadPage() {
     setSubmitting(true);
     setError('');
     try {
-      // Convert file to base64 for raw input
       const reader = new FileReader();
       const base64 = await new Promise<string>((resolve, reject) => {
-        reader.onload = () => resolve(reader.result as string);
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          // Strip data URL prefix, send only the base64 payload
+          const idx = dataUrl.indexOf(',');
+          resolve(idx >= 0 ? dataUrl.substring(idx + 1) : dataUrl);
+        };
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
@@ -72,6 +97,46 @@ export default function DocUploadPage() {
     }
   };
 
+  const handleReset = () => {
+    setFile(null);
+    setSubmitting(false);
+    setPipelineStatus('');
+    setError('');
+    setResultObject(null);
+  };
+
+  // ---------- Extraction results view ----------
+  if (resultObject) {
+    const attrs = resultObject.attributes ?? {};
+    return (
+      <div>
+        <Link to={`/tools/${toolId}`} className="back-link">Back to Tool</Link>
+        <h1>Extraction Results</h1>
+
+        <div className="alert alert-success">Pipeline completed — fields extracted</div>
+
+        <div className="detail-grid">
+          {CERT_FIELDS.map(({ key, label }) => (
+            <div className="detail-row" key={key}>
+              <span className="detail-label">{label}</span>
+              <span>{attrs[key] != null ? String(attrs[key]) : '—'}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="form-actions">
+          <button className="btn btn-primary" onClick={handleReset}>
+            Upload Another
+          </button>
+          <Link to={`/tools/${toolId}`} className="btn btn-secondary">
+            Back to Tool
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- Upload view ----------
   return (
     <div>
       <Link to={`/tools/${toolId}`} className="back-link">Back to Tool</Link>
@@ -82,7 +147,6 @@ export default function DocUploadPage() {
       {pipelineStatus && (
         <div className={`alert ${pipelineStatus === 'completed' ? 'alert-success' : 'alert-info'}`}>
           Pipeline status: {pipelineStatus}
-          {pipelineStatus === 'completed' && ' - Redirecting...'}
         </div>
       )}
 
@@ -96,6 +160,7 @@ export default function DocUploadPage() {
         <input
           ref={fileInputRef}
           type="file"
+          accept="image/*"
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
@@ -106,7 +171,7 @@ export default function DocUploadPage() {
           </div>
         ) : (
           <div className="drop-zone-prompt">
-            <p>Drag and drop a file here, or click to browse</p>
+            <p>Drag and drop an image here, or click to browse</p>
           </div>
         )}
       </div>
