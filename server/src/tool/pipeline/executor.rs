@@ -7,6 +7,8 @@ use crate::data::repo as data_repo;
 use crate::intelligence::repo as reminder_repo;
 use crate::tool::models::AtomicCapability;
 
+use super::gemini;
+
 /// Context about the currently executing pipeline, provided to the executor
 /// so it can persist data objects and reminders.
 #[derive(Debug, Clone)]
@@ -215,7 +217,7 @@ impl StepExecutor {
         }
     }
 
-    /// Execute a remote LLM capability by sending a request to the configured API.
+    /// Execute a remote LLM capability by sending a request to the Gemini API.
     async fn execute_remote_llm(
         input: Value,
         runtime_config: &Option<Value>,
@@ -228,36 +230,74 @@ impl StepExecutor {
         let model = config
             .get("model")
             .and_then(|v| v.as_str())
-            .unwrap_or("gpt-4");
+            .unwrap_or("gemini-3.1-pro");
 
         let system_prompt = config
             .get("system_prompt")
             .and_then(|v| v.as_str())
             .unwrap_or("You are a helpful assistant.");
 
-        // Extract the user message from input.
-        let user_message = if let Some(text) = input.get("text").and_then(|v| v.as_str()) {
-            text.to_string()
-        } else if let Some(content) = input.get("raw_content").and_then(|v| v.as_str()) {
-            content.to_string()
-        } else {
-            serde_json::to_string(&input)
-                .unwrap_or_else(|_| "{}".to_string())
+        let temperature = config.get("temperature").and_then(|v| v.as_f64());
+
+        let mode = config
+            .get("mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("text");
+
+        let request_body = match mode {
+            "vision" => {
+                let image_base64 = input
+                    .get("image_base64")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let mime_type = input
+                    .get("mime_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("image/png");
+                let text = input
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Describe this image.");
+                gemini::build_image_request(image_base64, mime_type, text, system_prompt, temperature)
+            }
+            "image_generation" => {
+                let image_base64 = input
+                    .get("image_base64")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let mime_type = input
+                    .get("mime_type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("image/png");
+                let text = input
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("Process this image.");
+                gemini::build_image_generation_request(image_base64, mime_type, text, system_prompt, temperature)
+            }
+            _ => {
+                // Default "text" mode.
+                let user_message = if let Some(text) = input.get("text").and_then(|v| v.as_str()) {
+                    text.to_string()
+                } else if let Some(content) = input.get("raw_content").and_then(|v| v.as_str()) {
+                    content.to_string()
+                } else {
+                    serde_json::to_string(&input).unwrap_or_else(|_| "{}".to_string())
+                };
+                gemini::build_text_request(&user_message, system_prompt, temperature)
+            }
         };
 
-        let request_body = serde_json::json!({
-            "model": model,
-            "messages": [
-                { "role": "system", "content": system_prompt },
-                { "role": "user", "content": user_message },
-            ],
-            "temperature": config.get("temperature").and_then(|v| v.as_f64()).unwrap_or(0.7),
-        });
+        let url = format!(
+            "{}/v1beta/models/{}:generateContent?key={}",
+            app_config.llm_api_url.trim_end_matches('/'),
+            model,
+            app_config.llm_api_key,
+        );
 
         let client = reqwest::Client::new();
         let response = client
-            .post(&app_config.llm_api_url)
-            .header("Authorization", format!("Bearer {}", app_config.llm_api_key))
+            .post(&url)
             .header("Content-Type", "application/json")
             .json(&request_body)
             .send()
@@ -280,20 +320,31 @@ impl StepExecutor {
             .await
             .map_err(|e| AppError::ExternalService(format!("failed to parse LLM response: {e}")))?;
 
-        // Extract the assistant's message from a standard chat completion response.
-        let assistant_content = response_body
-            .get("choices")
-            .and_then(|c| c.get(0))
-            .and_then(|c| c.get("message"))
-            .and_then(|m| m.get("content"))
-            .cloned()
-            .unwrap_or(Value::Null);
+        let gemini_resp: gemini::GeminiResponse = serde_json::from_value(response_body.clone())
+            .map_err(|e| AppError::ExternalService(format!("failed to parse Gemini response: {e}")))?;
 
-        Ok(serde_json::json!({
-            "result": assistant_content,
-            "model": model,
-            "raw_response": response_body,
-        }))
+        if mode == "image_generation" {
+            let text_result = gemini::extract_text(&gemini_resp).unwrap_or_default();
+            let image = gemini::extract_image(&gemini_resp).map(|img| {
+                serde_json::json!({
+                    "mime_type": img.mime_type,
+                    "data": img.data,
+                })
+            });
+            Ok(serde_json::json!({
+                "result": text_result,
+                "image": image,
+                "model": model,
+                "raw_response": response_body,
+            }))
+        } else {
+            let text_result = gemini::extract_text(&gemini_resp).unwrap_or_default();
+            Ok(serde_json::json!({
+                "result": text_result,
+                "model": model,
+                "raw_response": response_body,
+            }))
+        }
     }
 
     /// Execute a script-based capability. Not implemented for M1.

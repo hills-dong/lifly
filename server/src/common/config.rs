@@ -35,16 +35,18 @@ impl AppConfig {
     ///
     /// # Panics
     ///
-    /// Panics if any required variable (`DATABASE_URL`, `LLM_API_KEY`,
-    /// `LLM_API_URL`, `JWT_SECRET`) is missing.
+    /// Panics if any required variable (`DATABASE_URL`, `JWT_SECRET`) is missing.
+    /// `LLM_API_KEY` defaults to empty string; `LLM_API_URL` defaults to
+    /// `https://generativelanguage.googleapis.com`.
     pub fn from_env() -> Self {
         Self {
             database_url: required("DATABASE_URL"),
             file_storage_path: PathBuf::from(
                 env::var("FILE_STORAGE_PATH").unwrap_or_else(|_| "/data/files".to_string()),
             ),
-            llm_api_key: required("LLM_API_KEY"),
-            llm_api_url: required("LLM_API_URL"),
+            llm_api_key: env::var("LLM_API_KEY").unwrap_or_default(),
+            llm_api_url: env::var("LLM_API_URL")
+                .unwrap_or_else(|_| "https://generativelanguage.googleapis.com".to_string()),
             jwt_secret: required("JWT_SECRET"),
             server_host: IpAddr::from_str(
                 &env::var("SERVER_HOST").unwrap_or_else(|_| "0.0.0.0".to_string()),
