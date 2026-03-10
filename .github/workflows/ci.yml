@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  backend-test:
-    name: Backend Tests
+  backend-check:
+    name: Backend Check & Test
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -26,13 +26,15 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://lifly:lifly@localhost:5432/lifly_test
+      JWT_SECRET: ci-test-secret
+      LLM_API_KEY: not-configured
+      LLM_API_URL: https://api.example.com/v1
+      FILE_STORAGE_PATH: /tmp/lifly-test-files
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: "1.83"
 
       - name: Cache cargo dependencies
         uses: actions/cache@v4
@@ -44,12 +46,16 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('server/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Run backend tests
+      - name: Check compilation
         working-directory: server
-        run: cargo test
+        run: cargo check
 
-  frontend-test:
-    name: Frontend Tests
+      - name: Run tests
+        working-directory: server
+        run: cargo test -- --test-threads=1
+
+  frontend-check:
+    name: Frontend Check & Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -68,6 +74,14 @@ jobs:
         working-directory: web
         run: pnpm install --frozen-lockfile || pnpm install
 
-      - name: Run frontend tests
+      - name: Type check
+        working-directory: web
+        run: npx tsc --noEmit
+
+      - name: Run tests
         working-directory: web
         run: pnpm test
+
+      - name: Build
+        working-directory: web
+        run: pnpm build
