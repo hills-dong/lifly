@@ -83,7 +83,7 @@ export interface Reminder {
   data_object_id: string | null;
   title: string;
   description: string;
-  due_at: string;
+  trigger_at: string;
   repeat_rule: string;
   status: 'pending' | 'triggered' | 'dismissed';
   created_at: string;
@@ -139,7 +139,7 @@ export interface CreateRawInputRequest {
 export interface CreateReminderRequest {
   title: string;
   description?: string;
-  due_at: string;
+  trigger_at: string;
   repeat_rule?: string;
   data_object_id?: string;
 }
@@ -147,7 +147,7 @@ export interface CreateReminderRequest {
 export interface UpdateReminderRequest {
   title?: string;
   description?: string;
-  due_at?: string;
+  trigger_at?: string;
   repeat_rule?: string;
   status?: string;
 }

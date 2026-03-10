@@ -31,7 +31,7 @@ export default function RemindersPage() {
       await remindersApi.createReminder({
         title: formTitle,
         description: formDescription,
-        due_at: new Date(formDueAt).toISOString(),
+        trigger_at: new Date(formDueAt).toISOString(),
       });
       setShowForm(false);
       setFormTitle('');
@@ -132,7 +132,7 @@ export default function RemindersPage() {
                 <strong>{r.title}</strong>
                 {r.description && <p>{r.description}</p>}
                 <span className="reminder-due">
-                  Due: {new Date(r.due_at).toLocaleString()}
+                  Due: {new Date(r.trigger_at).toLocaleString()}
                 </span>
                 <span className={`badge badge-${r.status}`}>{r.status}</span>
               </div>
