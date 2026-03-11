@@ -44,6 +44,8 @@ async fn test_context() -> ExecutionContext {
         tool_id: Uuid::nil(),
         pipeline_id: Uuid::nil(),
         user_id: Uuid::nil(),
+        file_storage_path: std::path::PathBuf::from("/tmp/lifly-test-files"),
+        raw_input_id: None,
     }
 }
 
