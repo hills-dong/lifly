@@ -3,7 +3,7 @@ use axum::routing::{delete, get, post, put};
 use axum::Router;
 use uuid::Uuid;
 
-use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser};
+use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser, check_ownership};
 
 use super::models::{
     CreateReminderRequest, ReminderQuery, ReminderResponse, UpdateReminderRequest,
@@ -31,9 +31,7 @@ async fn get_reminder_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("reminder {id} not found")))?;
 
-    if reminder.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("reminder {id} not found")));
-    }
+    check_ownership(reminder.user_id, auth.user_id, "reminder", id)?;
 
     Ok(ApiResponse::success(ReminderResponse::from(reminder)))
 }
@@ -70,9 +68,7 @@ async fn update_reminder_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("reminder {id} not found")))?;
 
-    if existing.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("reminder {id} not found")));
-    }
+    check_ownership(existing.user_id, auth.user_id, "reminder", id)?;
 
     let reminder = repo::update_reminder(
         &state.pool,
@@ -98,9 +94,7 @@ async fn delete_reminder_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("reminder {id} not found")))?;
 
-    if existing.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("reminder {id} not found")));
-    }
+    check_ownership(existing.user_id, auth.user_id, "reminder", id)?;
 
     repo::delete_reminder(&state.pool, id).await?;
     Ok(ApiResponse::success(()))
@@ -117,9 +111,7 @@ async fn dismiss_reminder_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("reminder {id} not found")))?;
 
-    if existing.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("reminder {id} not found")));
-    }
+    check_ownership(existing.user_id, auth.user_id, "reminder", id)?;
 
     let reminder = repo::dismiss_reminder(&state.pool, id).await?;
     Ok(ApiResponse::success(ReminderResponse::from(reminder)))

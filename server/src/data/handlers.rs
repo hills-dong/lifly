@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use axum::body::Body;
 use axum::extract::{Multipart, Path as AxumPath, Query, State};
 use axum::http::header;
@@ -7,14 +5,11 @@ use axum::response::IntoResponse;
 use axum::routing::{delete, get, post, put};
 use axum::Json;
 use axum::Router;
-use chrono::Utc;
-use sha2::{Digest, Sha256};
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
 use tokio_util::io::ReaderStream;
 use uuid::Uuid;
 
-use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser};
+use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser, save_file_to_storage};
 
 use super::models::{
     CategoryResponse, CreateCategoryRequest, DataObjectDetailResponse, DataObjectQuery,
@@ -212,64 +207,20 @@ async fn upload_file(
     let bytes = file_bytes.ok_or_else(|| AppError::Validation("missing file field".into()))?;
     let orig_name = original_file_name.unwrap_or_else(|| "upload".to_string());
 
-    // Determine extension from original name.
-    let extension = Path::new(&orig_name)
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("bin")
-        .to_string();
-
-    // Build storage path: {storage_path}/{year}/{month}/{uuid}.{ext}
-    let now = Utc::now();
-    let year = now.format("%Y");
-    let month = now.format("%m");
-    let file_uuid = Uuid::new_v4();
-    let relative_path = format!("{year}/{month}/{file_uuid}.{extension}");
-    let full_dir = state
-        .config
-        .file_storage_path
-        .join(format!("{year}/{month}"));
-    let full_path = state.config.file_storage_path.join(&relative_path);
-
-    // Ensure directory exists.
-    fs::create_dir_all(&full_dir)
-        .await
-        .map_err(|e| AppError::Internal(format!("failed to create directory: {e}")))?;
-
-    // Compute SHA-256 checksum.
-    let mut hasher = Sha256::new();
-    hasher.update(&bytes);
-    let checksum = hex::encode(hasher.finalize());
-
-    let file_size = bytes.len() as i64;
-
-    // Write file to disk.
-    let mut file = fs::File::create(&full_path)
-        .await
-        .map_err(|e| AppError::Internal(format!("failed to create file: {e}")))?;
-    file.write_all(&bytes)
-        .await
-        .map_err(|e| AppError::Internal(format!("failed to write file: {e}")))?;
-    file.flush()
-        .await
-        .map_err(|e| AppError::Internal(format!("failed to flush file: {e}")))?;
-
-    // Guess MIME type from extension.
+    // Guess MIME type from original file name.
     let mime_type = mime_guess::from_path(&orig_name)
         .first_or_octet_stream()
         .to_string();
 
-    // Create database record.
-    let record = repo::create_file_storage(
-        &state.pool,
+    let record = save_file_to_storage(
+        &bytes,
+        &mime_type,
+        &orig_name,
+        &role,
         data_object_id,
         raw_input_id,
-        &relative_path,
-        &orig_name,
-        &mime_type,
-        file_size,
-        &checksum,
-        &role,
+        &state.pool,
+        &state.config.file_storage_path,
     )
     .await?;
 

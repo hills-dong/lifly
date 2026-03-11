@@ -2,16 +2,13 @@ use std::path::PathBuf;
 
 use base64::Engine;
 use serde_json::Value;
-use sha2::{Digest, Sha256};
 use sqlx::PgPool;
-use tokio::fs;
-use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
-use crate::common::{AppConfig, AppError, AppResult};
+use crate::common::{AppConfig, AppError, AppResult, save_file_to_storage};
 use crate::data::repo as data_repo;
 use crate::intelligence::repo as reminder_repo;
-use crate::tool::models::AtomicCapability;
+use crate::tool::models::ExecutorCapability;
 
 use super::gemini;
 
@@ -33,7 +30,7 @@ pub struct StepExecutor;
 impl StepExecutor {
     /// Execute a step by dispatching to the capability's runtime.
     pub async fn execute(
-        capability: &AtomicCapability,
+        capability: &ExecutorCapability,
         input: Value,
         config: &AppConfig,
         ctx: &ExecutionContext,
@@ -356,7 +353,7 @@ impl StepExecutor {
     /// Decode a base64 string, write the bytes to disk under the file storage
     /// directory, and create a `file_storage` DB record.
     ///
-    /// Returns the created `FileStorage` record.
+    /// Thin wrapper around [`save_file_to_storage`] that handles base64 decoding.
     async fn save_base64_to_file(
         base64_data: &str,
         mime_type: &str,
@@ -373,67 +370,19 @@ impl StepExecutor {
             AppError::Validation(format!("invalid base64 data: {e}"))
         })?;
 
-        // Determine file extension from MIME type.
-        let extension = match mime_type {
-            "image/png" => "png",
-            "image/jpeg" | "image/jpg" => "jpg",
-            "image/gif" => "gif",
-            "image/webp" => "webp",
-            "image/bmp" => "bmp",
-            "image/tiff" => "tiff",
-            "application/pdf" => "pdf",
-            _ => "bin",
-        };
+        let file_name = format!("{}.{}", Uuid::new_v4(), mime_type.split('/').last().unwrap_or("bin"));
 
-        // Build storage path: {storage_path}/{year}/{month}/{uuid}.{ext}
-        let now = chrono::Utc::now();
-        let year = now.format("%Y");
-        let month = now.format("%m");
-        let file_uuid = Uuid::new_v4();
-        let file_name = format!("{file_uuid}.{extension}");
-        let relative_path = format!("{year}/{month}/{file_name}");
-        let full_dir = file_storage_path.join(format!("{year}/{month}"));
-        let full_path = file_storage_path.join(&relative_path);
-
-        // Ensure directory exists.
-        fs::create_dir_all(&full_dir)
-            .await
-            .map_err(|e| AppError::Internal(format!("failed to create directory: {e}")))?;
-
-        // Compute SHA-256 checksum.
-        let mut hasher = Sha256::new();
-        hasher.update(&bytes);
-        let checksum = hex::encode(hasher.finalize());
-
-        let file_size = bytes.len() as i64;
-
-        // Write file to disk.
-        let mut file = fs::File::create(&full_path)
-            .await
-            .map_err(|e| AppError::Internal(format!("failed to create file: {e}")))?;
-        file.write_all(&bytes)
-            .await
-            .map_err(|e| AppError::Internal(format!("failed to write file: {e}")))?;
-        file.flush()
-            .await
-            .map_err(|e| AppError::Internal(format!("failed to flush file: {e}")))?;
-
-        // Create database record.
-        let record = data_repo::create_file_storage(
-            pool,
+        save_file_to_storage(
+            &bytes,
+            mime_type,
+            &file_name,
+            role,
             data_object_id,
             raw_input_id,
-            &relative_path,
-            &file_name,
-            mime_type,
-            file_size,
-            &checksum,
-            role,
+            pool,
+            file_storage_path,
         )
         .await
-        .map_err(AppError::Database)?;
-
-        Ok(record)
     }
 
     /// Execute a remote LLM capability by sending a request to the Gemini API.

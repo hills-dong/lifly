@@ -4,7 +4,7 @@ use axum::Router;
 use serde::Deserialize;
 use uuid::Uuid;
 
-use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser};
+use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser, check_ownership};
 
 use super::models::{
     CreateRawInputRequest, PipelineDetailResponse, PipelineResponse, RawInputResponse,
@@ -36,10 +36,7 @@ async fn get_tool_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("tool {id} not found")))?;
 
-    // Ensure the requesting user owns this tool.
-    if tool.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("tool {id} not found")));
-    }
+    check_ownership(tool.user_id, auth.user_id, "tool", id)?;
 
     Ok(ApiResponse::success(ToolDetailResponse::from(tool)))
 }
@@ -56,9 +53,7 @@ async fn list_versions_handler(
     let tool = repo::find_tool_by_id(&state.pool, tool_id)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("tool {tool_id} not found")))?;
-    if tool.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("tool {tool_id} not found")));
-    }
+    check_ownership(tool.user_id, auth.user_id, "tool", tool_id)?;
 
     let versions = repo::list_versions(&state.pool, tool_id).await?;
     let resp: Vec<VersionResponse> = versions.into_iter().map(Into::into).collect();
@@ -75,9 +70,7 @@ async fn get_version_handler(
     let tool = repo::find_tool_by_id(&state.pool, tool_id)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("tool {tool_id} not found")))?;
-    if tool.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("tool {tool_id} not found")));
-    }
+    check_ownership(tool.user_id, auth.user_id, "tool", tool_id)?;
 
     let version = repo::find_version_by_id(&state.pool, version_id)
         .await?
@@ -125,9 +118,7 @@ async fn create_raw_input_handler(
     let tool = repo::find_tool_by_id(&state.pool, body.tool_id)
         .await?
         .ok_or_else(|| AppError::NotFound(format!("tool {} not found", body.tool_id)))?;
-    if tool.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("tool {} not found", body.tool_id)));
-    }
+    check_ownership(tool.user_id, auth.user_id, "tool", body.tool_id)?;
 
     // The tool must have a current version to execute.
     let version_id = tool.current_version_id.ok_or_else(|| {
@@ -183,9 +174,7 @@ async fn get_raw_input_handler(
         .await?
         .ok_or_else(|| AppError::NotFound(format!("raw input {id} not found")))?;
 
-    if raw_input.user_id != auth.user_id {
-        return Err(AppError::NotFound(format!("raw input {id} not found")));
-    }
+    check_ownership(raw_input.user_id, auth.user_id, "raw input", id)?;
 
     // Find associated pipeline if any.
     let pipelines = repo::list_pipelines(&state.pool, None, None).await?;

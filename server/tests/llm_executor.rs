@@ -9,7 +9,7 @@ use wiremock::matchers::{method, path_regex};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use lifly_server::common::{AppConfig, AppError};
-use lifly_server::tool::models::AtomicCapability;
+use lifly_server::tool::models::ExecutorCapability;
 use lifly_server::tool::pipeline::executor::{ExecutionContext, StepExecutor};
 
 /// Create an AppConfig pointing at the given mock server URI.
@@ -50,8 +50,8 @@ async fn test_context() -> ExecutionContext {
 }
 
 /// Create a capability with runtime_type = "remote_llm" and the given runtime_config.
-fn llm_capability(runtime_config: Option<Value>) -> AtomicCapability {
-    AtomicCapability {
+fn llm_capability(runtime_config: Option<Value>) -> ExecutorCapability {
+    ExecutorCapability {
         id: Uuid::new_v4(),
         name: "test_llm".to_string(),
         runtime_type: "remote_llm".to_string(),

@@ -2,7 +2,7 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use super::models::{
-    AtomicCapability, Pipeline, RawInput, StepExecution, Tool, ToolStep, ToolVersion,
+    ExecutorCapability, Pipeline, RawInput, StepExecution, Tool, ToolStep, ToolVersion,
 };
 
 // ── Tool queries ───────────────────────────────────────────────────────────
@@ -328,8 +328,8 @@ pub async fn list_step_executions(
 pub async fn find_capability_by_id(
     pool: &PgPool,
     id: Uuid,
-) -> Result<Option<AtomicCapability>, sqlx::Error> {
-    sqlx::query_as::<_, AtomicCapability>(
+) -> Result<Option<ExecutorCapability>, sqlx::Error> {
+    sqlx::query_as::<_, ExecutorCapability>(
         "SELECT id, name, runtime_type, runtime_config
          FROM atomic_capabilities
          WHERE id = $1",

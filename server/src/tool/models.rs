@@ -96,8 +96,11 @@ pub struct StepExecution {
 // ── Atomic capability (referenced by executor) ─────────────────────────────
 
 /// Minimal representation of an atomic capability, loaded for step execution.
+///
+/// Named `ExecutorCapability` to avoid confusion with the full
+/// [`crate::capability::models::AtomicCapability`] DB model.
 #[derive(Debug, Clone, FromRow)]
-pub struct AtomicCapability {
+pub struct ExecutorCapability {
     pub id: Uuid,
     pub name: String,
     pub runtime_type: String,
