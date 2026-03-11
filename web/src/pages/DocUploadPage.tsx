@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, type DragEvent } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { rawInputs, dataObjects as doApi } from '../api';
-import type { DataObject } from '../api/types';
+import { rawInputs, dataObjects as doApi, files as filesApi } from '../api';
+import type { DataObject, FileStorage } from '../api/types';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 const CERT_FIELDS: { key: string; label: string }[] = [
@@ -22,6 +22,7 @@ export default function DocUploadPage() {
   const [pipelineId, setPipelineId] = useState('');
   const [error, setError] = useState('');
   const [resultObject, setResultObject] = useState<DataObject | null>(null);
+  const [resultFiles, setResultFiles] = useState<FileStorage[]>([]);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const loadResult = useCallback(async () => {
@@ -30,7 +31,18 @@ export default function DocUploadPage() {
       const list = await doApi.listDataObjects({ tool_id: toolId, limit: 1 });
       const items = Array.isArray(list) ? list : [];
       if (items.length > 0) {
-        setResultObject(items[0]);
+        const obj = items[0];
+        setResultObject(obj);
+        // Fetch associated files from FileStorage so the image persists across refreshes
+        try {
+          const objFiles = await filesApi.listByDataObject(obj.id);
+          const imageFiles = (Array.isArray(objFiles) ? objFiles : []).filter(
+            (f: FileStorage) => f.mime_type.startsWith('image/')
+          );
+          setResultFiles(imageFiles);
+        } catch {
+          // files fetch is best-effort
+        }
       }
     } catch {
       // silently ignore — the user can still navigate to the tool page
@@ -111,6 +123,7 @@ export default function DocUploadPage() {
     setPipelineId('');
     setError('');
     setResultObject(null);
+    setResultFiles([]);
     setImagePreview(null);
   };
 
@@ -124,11 +137,28 @@ export default function DocUploadPage() {
 
         <div className="alert alert-success">Pipeline completed — fields extracted</div>
 
-        {imagePreview && (
+        {resultFiles.length > 0 ? (
+          <div className="doc-image-preview" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
+            {resultFiles.map((f) => (
+              <div key={f.id} style={{ textAlign: 'center' }}>
+                <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
+                  <img
+                    src={filesApi.getFileUrl(f.id)}
+                    alt={f.file_name}
+                    style={{ maxWidth: '400px', borderRadius: '8px', border: '1px solid #ddd' }}
+                  />
+                </a>
+                <div style={{ marginTop: '4px', fontSize: '0.85em', color: '#666', textTransform: 'capitalize' }}>
+                  {f.role}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : imagePreview ? (
           <div className="doc-image-preview">
             <img src={imagePreview} alt="Uploaded document" style={{ maxWidth: '400px', borderRadius: '8px', border: '1px solid #ddd' }} />
           </div>
-        )}
+        ) : null}
 
         <div className="detail-grid">
           {CERT_FIELDS.map(({ key, label }) => (

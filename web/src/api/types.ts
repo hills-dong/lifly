@@ -57,6 +57,11 @@ export interface DataObject {
   updated_at: string;
 }
 
+/** Detail response from GET /api/data-objects/:id (includes associated files). */
+export interface DataObjectDetail extends DataObject {
+  files: FileStorage[];
+}
+
 export interface FileStorage {
   id: string;
   data_object_id: string | null;

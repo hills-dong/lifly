@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { tools as toolsApi, dataObjects as doApi } from '../api';
-import type { Tool, DataObject } from '../api/types';
+import { tools as toolsApi, dataObjects as doApi, files as filesApi } from '../api';
+import type { Tool, DataObject, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
 
 export default function ToolPage() {
@@ -9,6 +9,7 @@ export default function ToolPage() {
   const [tool, setTool] = useState<Tool | null>(null);
   const [objects, setObjects] = useState<DataObject[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
+  const [thumbnails, setThumbnails] = useState<Record<string, FileStorage | null>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -25,6 +26,29 @@ export default function ToolPage() {
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [id, statusFilter]);
+
+  // Fetch thumbnail images for doc-type data objects
+  useEffect(() => {
+    if (!tool || objects.length === 0) return;
+    const nameLower = (tool.name + ' ' + tool.description).toLowerCase();
+    const isDocTool = nameLower.includes('证件') || nameLower.includes('document') || nameLower.includes('id-doc');
+    if (!isDocTool) return;
+
+    objects.forEach((obj) => {
+      if (thumbnails[obj.id] !== undefined) return; // already fetched or in-flight
+      setThumbnails((prev) => ({ ...prev, [obj.id]: null })); // mark as in-flight
+      filesApi.listByDataObject(obj.id).then((fileList) => {
+        const files = Array.isArray(fileList) ? fileList : [];
+        // Prefer "original" role image, fall back to any image
+        const original = files.find((f: FileStorage) => f.mime_type.startsWith('image/') && f.role === 'original');
+        const anyImage = files.find((f: FileStorage) => f.mime_type.startsWith('image/'));
+        const thumb = original || anyImage || null;
+        setThumbnails((prev) => ({ ...prev, [obj.id]: thumb }));
+      }).catch(() => {
+        // ignore — thumbnail is best-effort
+      });
+    });
+  }, [tool, objects, thumbnails]);
 
   const handleToggleTodo = async (obj: DataObject) => {
     const done = !obj.attributes?.done;
@@ -104,6 +128,13 @@ export default function ToolPage() {
         <div className="card-grid">
           {objects.map((obj) => (
             <Link to={`/data-objects/${obj.id}`} key={obj.id} className="card card-link">
+              {thumbnails[obj.id] && (
+                <img
+                  src={filesApi.getFileUrl(thumbnails[obj.id]!.id)}
+                  alt={displayTitle(obj)}
+                  style={{ width: '100%', maxHeight: '120px', objectFit: 'cover', borderRadius: '4px', marginBottom: '8px' }}
+                />
+              )}
               <h3>{displayTitle(obj)}</h3>
               <p className="card-meta">
                 {obj.status} &middot; {new Date(obj.created_at).toLocaleDateString()}

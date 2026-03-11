@@ -4,6 +4,7 @@ import type {
   LoginResponse,
   Tool,
   DataObject,
+  DataObjectDetail,
   UpdateDataObjectRequest,
   CreateRawInputRequest,
   Pipeline,
@@ -43,7 +44,7 @@ export const dataObjects = {
     client.get<DataObject[]>('/api/data-objects', { params }).then((r) => r.data),
 
   getDataObject: (id: string) =>
-    client.get<DataObject>(`/api/data-objects/${id}`).then((r) => r.data),
+    client.get<DataObjectDetail>(`/api/data-objects/${id}`).then((r) => r.data),
 
   updateDataObject: (id: string, data: UpdateDataObjectRequest) =>
     client.put<DataObject>(`/api/data-objects/${id}`, data).then((r) => r.data),
@@ -122,5 +123,13 @@ export const files = {
       .then((r) => r.data);
   },
 
-  getFileUrl: (fileId: string) => `/api/files/${fileId}`,
+  /** Build an authenticated URL for use in <img src="..."> tags. */
+  getFileUrl: (fileId: string) => {
+    const token = localStorage.getItem('token') || '';
+    return `/api/files/${fileId}?token=${encodeURIComponent(token)}`;
+  },
+
+  /** List FileStorage records for a given data object. */
+  listByDataObject: (dataObjectId: string) =>
+    client.get<FileStorage[]>(`/api/data-objects/${dataObjectId}/files`).then((r) => r.data),
 };
