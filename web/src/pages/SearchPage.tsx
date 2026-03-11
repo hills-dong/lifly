@@ -2,18 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { dataObjects } from '../api';
 import type { DataObject } from '../api/types';
-
-function displayTitle(obj: DataObject): string {
-  const a = obj.attributes;
-  const candidates = [a?.content, a?.title, a?.full_name, a?.cert_type];
-  for (const c of candidates) {
-    if (c != null) {
-      const s = String(c);
-      if (s.length > 0 && s.length <= 200) return s;
-    }
-  }
-  return 'Untitled';
-}
+import { displayTitle } from '../utils/displayTitle';
 
 export default function SearchPage() {
   const [query, setQuery] = useState('');

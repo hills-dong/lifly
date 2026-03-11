@@ -2,18 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { dataObjects as doApi, files as filesApi } from '../api';
 import type { DataObject, FileStorage } from '../api/types';
-
-function displayTitle(obj: DataObject): string {
-  const a = obj.attributes;
-  const candidates = [a?.content, a?.title, a?.full_name, a?.cert_type];
-  for (const c of candidates) {
-    if (c != null) {
-      const s = String(c);
-      if (s.length > 0 && s.length <= 200) return s;
-    }
-  }
-  return 'Untitled';
-}
+import { displayTitle } from '../utils/displayTitle';
 
 export default function DataObjectPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,8 +21,9 @@ export default function DataObjectPage() {
       .then((data) => {
         setObj(data);
         setEditAttrs(JSON.stringify(data.attributes, null, 2));
-        if ((data as DataObject & { files?: FileStorage[] }).files) {
-          setAssociatedFiles((data as DataObject & { files?: FileStorage[] }).files!);
+        // The detail endpoint returns files alongside the data object
+        if (data.files) {
+          setAssociatedFiles(data.files);
         }
       })
       .catch((err) => setError(err.message))
@@ -138,20 +128,48 @@ export default function DataObjectPage() {
             )}
           </div>
 
-          {associatedFiles.length > 0 && (
+          {associatedFiles.filter((f) => f.mime_type.startsWith('image/')).length > 0 && (
+            <>
+              <h2>Images</h2>
+              <div className="image-gallery" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
+                {associatedFiles
+                  .filter((f) => f.mime_type.startsWith('image/'))
+                  .map((f) => (
+                    <div key={f.id} className="image-preview" style={{ textAlign: 'center' }}>
+                      <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={filesApi.getFileUrl(f.id)}
+                          alt={f.file_name}
+                          style={{ maxWidth: '400px', maxHeight: '300px', borderRadius: '8px', border: '1px solid #ddd', objectFit: 'contain' }}
+                        />
+                      </a>
+                      <div style={{ marginTop: '4px', fontSize: '0.85em', color: '#666' }}>
+                        <span style={{ textTransform: 'capitalize' }}>{f.role}</span>
+                        {' \u00b7 '}
+                        {(f.file_size / 1024).toFixed(1)} KB
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </>
+          )}
+
+          {associatedFiles.filter((f) => !f.mime_type.startsWith('image/')).length > 0 && (
             <>
               <h2>Files</h2>
               <ul className="file-list">
-                {associatedFiles.map((f) => (
-                  <li key={f.id}>
-                    <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
-                      {f.file_name}
-                    </a>
-                    <span className="file-meta">
-                      {f.mime_type} &middot; {(f.file_size / 1024).toFixed(1)} KB
-                    </span>
-                  </li>
-                ))}
+                {associatedFiles
+                  .filter((f) => !f.mime_type.startsWith('image/'))
+                  .map((f) => (
+                    <li key={f.id}>
+                      <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
+                        {f.file_name}
+                      </a>
+                      <span className="file-meta">
+                        {f.mime_type} &middot; {(f.file_size / 1024).toFixed(1)} KB
+                      </span>
+                    </li>
+                  ))}
               </ul>
             </>
           )}

@@ -49,7 +49,14 @@ describe('API module exports', () => {
     expect(files.getFileUrl).toBeTypeOf('function');
   });
 
-  it('generates correct file URLs', () => {
-    expect(files.getFileUrl('abc-123')).toBe('/api/files/abc-123');
+  it('generates correct file URLs with token', () => {
+    localStorage.setItem('token', 'my-jwt');
+    expect(files.getFileUrl('abc-123')).toBe('/api/files/abc-123?token=my-jwt');
+    localStorage.removeItem('token');
+  });
+
+  it('generates file URLs without token when not logged in', () => {
+    localStorage.removeItem('token');
+    expect(files.getFileUrl('abc-123')).toBe('/api/files/abc-123?token=');
   });
 });
