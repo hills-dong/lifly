@@ -451,10 +451,18 @@ impl StepExecutor {
             .and_then(|v| v.as_str())
             .unwrap_or("gemini-3.1-pro");
 
-        let system_prompt = config
+        let base_system_prompt = config
             .get("system_prompt")
             .and_then(|v| v.as_str())
             .unwrap_or("You are a helpful assistant.");
+        // Inject current date/time so LLM can resolve relative time expressions
+        // like "今晚", "明天", "下周一".
+        let now = chrono::Local::now();
+        let system_prompt = format!(
+            "{base_system_prompt}\n\nCurrent date and time: {} ({})",
+            now.format("%Y-%m-%d %H:%M %Z"),
+            now.format("%A"),
+        );
 
         let temperature = config.get("temperature").and_then(|v| v.as_f64());
 
@@ -477,7 +485,7 @@ impl StepExecutor {
                     .get("text")
                     .and_then(|v| v.as_str())
                     .unwrap_or("Analyze this image and follow the instructions in your system prompt.");
-                gemini::build_image_request(image_base64, mime_type, text, system_prompt, temperature)
+                gemini::build_image_request(image_base64, mime_type, text, &system_prompt, temperature)
             }
             "image_generation" => {
                 let image_base64 = input
@@ -492,7 +500,7 @@ impl StepExecutor {
                     .get("text")
                     .and_then(|v| v.as_str())
                     .unwrap_or("Process this image.");
-                gemini::build_image_generation_request(image_base64, mime_type, text, system_prompt, temperature)
+                gemini::build_image_generation_request(image_base64, mime_type, text, &system_prompt, temperature)
             }
             _ => {
                 // Default "text" mode.
@@ -503,7 +511,7 @@ impl StepExecutor {
                 } else {
                     serde_json::to_string(&input).unwrap_or_else(|_| "{}".to_string())
                 };
-                gemini::build_text_request(&user_message, system_prompt, temperature)
+                gemini::build_text_request(&user_message, &system_prompt, temperature)
             }
         };
 
