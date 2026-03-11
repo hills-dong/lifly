@@ -72,6 +72,8 @@ impl PipelineEngine {
             tool_id: pipeline.tool_id,
             pipeline_id,
             user_id,
+            file_storage_path: self.config.file_storage_path.clone(),
+            raw_input_id: Some(pipeline.raw_input_id),
         };
 
         // 2. Load the ordered steps for this version.
@@ -313,5 +315,163 @@ impl PipelineEngine {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    // ── resolve_path tests ─────────────────────────────────────────────
+
+    #[test]
+    fn resolve_path_simple_key() {
+        let ctx = json!({"name": "Alice"});
+        let result = PipelineEngine::resolve_path(&ctx, "name");
+        assert_eq!(result, json!("Alice"));
+    }
+
+    #[test]
+    fn resolve_path_nested_dot_path() {
+        let ctx = json!({"a": {"b": {"c": 42}}});
+        let result = PipelineEngine::resolve_path(&ctx, "a.b.c");
+        assert_eq!(result, json!(42));
+    }
+
+    #[test]
+    fn resolve_path_missing_key_returns_null() {
+        let ctx = json!({"name": "Alice"});
+        let result = PipelineEngine::resolve_path(&ctx, "nonexistent");
+        assert!(result.is_null());
+    }
+
+    #[test]
+    fn resolve_path_missing_nested_key_returns_null() {
+        let ctx = json!({"a": {"b": 1}});
+        let result = PipelineEngine::resolve_path(&ctx, "a.x.y");
+        assert!(result.is_null());
+    }
+
+    #[test]
+    fn resolve_path_empty_segments() {
+        // An empty path string split by '.' yields one empty segment "".
+        // No key "" exists in a typical object, so it returns Null.
+        let ctx = json!({"key": "value"});
+        let result = PipelineEngine::resolve_path(&ctx, "");
+        assert!(result.is_null());
+    }
+
+    #[test]
+    fn resolve_path_returns_nested_object() {
+        let ctx = json!({"raw_input": {"id": "abc", "content": "hello"}});
+        let result = PipelineEngine::resolve_path(&ctx, "raw_input");
+        assert!(result.is_object());
+        assert_eq!(result["id"], json!("abc"));
+    }
+
+    // ── evaluate_condition tests ───────────────────────────────────────
+
+    #[test]
+    fn evaluate_condition_null_condition_returns_true() {
+        // A condition with no "field" key should always pass.
+        let condition = json!({});
+        let context = json!({"status": "ok"});
+        assert!(PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_equals_match() {
+        let condition = json!({"field": "status", "equals": "active"});
+        let context = json!({"status": "active"});
+        assert!(PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_equals_no_match() {
+        let condition = json!({"field": "status", "equals": "active"});
+        let context = json!({"status": "inactive"});
+        assert!(!PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_not_equals() {
+        let condition = json!({"field": "status", "not_equals": "failed"});
+        let context = json!({"status": "active"});
+        assert!(PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_not_equals_when_equal() {
+        let condition = json!({"field": "status", "not_equals": "failed"});
+        let context = json!({"status": "failed"});
+        assert!(!PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_exists_true() {
+        let condition = json!({"field": "data", "exists": true});
+        let context = json!({"data": "something"});
+        assert!(PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_exists_false_when_missing() {
+        let condition = json!({"field": "data", "exists": true});
+        let context = json!({"other": "value"});
+        assert!(!PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_nested_field() {
+        let condition = json!({"field": "raw_input.input_type", "equals": "text"});
+        let context = json!({"raw_input": {"input_type": "text"}});
+        assert!(PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    #[test]
+    fn evaluate_condition_no_operator_returns_true() {
+        // Has a field but no equals/not_equals/exists → defaults to true.
+        let condition = json!({"field": "status"});
+        let context = json!({"status": "active"});
+        assert!(PipelineEngine::evaluate_condition(&condition, &context));
+    }
+
+    // ── resolve_input tests ────────────────────────────────────────────
+
+    #[test]
+    fn resolve_input_no_mapping_returns_full_context() {
+        let context = json!({"a": 1, "b": 2});
+        let result = PipelineEngine::resolve_input(&context, &None);
+        assert_eq!(result, context);
+    }
+
+    #[test]
+    fn resolve_input_with_mapping() {
+        let context = json!({"raw_input": {"raw_content": "hello"}, "step1": {"result": "world"}});
+        let mapping = json!({"text": "raw_input.raw_content", "prev": "step1.result"});
+        let result = PipelineEngine::resolve_input(&context, &Some(mapping));
+        assert_eq!(result["text"], json!("hello"));
+        assert_eq!(result["prev"], json!("world"));
+    }
+
+    // ── apply_output_mapping tests ─────────────────────────────────────
+
+    #[test]
+    fn apply_output_mapping_no_mapping_sets_last_output() {
+        let mut context = json!({"existing": true});
+        let output = json!({"result": "done"});
+        PipelineEngine::apply_output_mapping(&mut context, &output, &None);
+        assert_eq!(context["last_output"], output);
+    }
+
+    #[test]
+    fn apply_output_mapping_with_mapping() {
+        let mut context = json!({});
+        let output = json!({"result": {"title": "Buy milk"}, "model": "gemini"});
+        let mapping = json!({"parsed_data": "result", "llm_model": "model"});
+        PipelineEngine::apply_output_mapping(&mut context, &output, &Some(mapping));
+        assert_eq!(context["parsed_data"], json!({"title": "Buy milk"}));
+        assert_eq!(context["llm_model"], json!("gemini"));
     }
 }

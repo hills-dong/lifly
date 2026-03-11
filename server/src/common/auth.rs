@@ -83,18 +83,36 @@ where
             .map(|s| s.0.clone())
             .ok_or_else(|| AppError::Internal("JWT secret not configured".to_string()))?;
 
-        // Extract the Bearer token from the Authorization header.
-        let header_value = parts
+        // Try Authorization header first, then fall back to ?token= query param.
+        // The query param is needed for <img src="..."> tags which cannot set headers.
+        let token = if let Some(header_value) = parts
             .headers
             .get(axum::http::header::AUTHORIZATION)
             .and_then(|v| v.to_str().ok())
-            .ok_or_else(|| AppError::Unauthorized("missing authorization header".to_string()))?;
+        {
+            header_value
+                .strip_prefix("Bearer ")
+                .ok_or_else(|| {
+                    AppError::Unauthorized("invalid authorization scheme".into())
+                })?
+                .to_string()
+        } else {
+            // Fall back to ?token= query parameter
+            let query = parts.uri.query().unwrap_or("");
+            query
+                .split('&')
+                .find_map(|pair| {
+                    let (key, value) = pair.split_once('=')?;
+                    if key == "token" {
+                        Some(value.to_string())
+                    } else {
+                        None
+                    }
+                })
+                .ok_or_else(|| AppError::Unauthorized("missing authorization".into()))?
+        };
 
-        let token = header_value
-            .strip_prefix("Bearer ")
-            .ok_or_else(|| AppError::Unauthorized("invalid authorization scheme".to_string()))?;
-
-        let claims = verify_token(token, &secret)?;
+        let claims = verify_token(&token, &secret)?;
 
         Ok(AuthUser {
             user_id: claims.sub,
@@ -125,3 +143,79 @@ where
 /// ```
 #[derive(Debug, Clone)]
 pub struct JwtSecret(pub String);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TEST_SECRET: &str = "test-secret-key-for-unit-tests";
+
+    #[test]
+    fn create_and_verify_token_roundtrip() {
+        let user_id = Uuid::new_v4();
+        let token = create_token(user_id, TEST_SECRET).expect("should create token");
+        let claims = verify_token(&token, TEST_SECRET).expect("should verify token");
+
+        assert_eq!(claims.sub, user_id);
+        assert!(claims.exp > claims.iat);
+        // Token should expire 7 days from now.
+        let expected_duration = Duration::days(TOKEN_DURATION_DAYS).num_seconds();
+        assert_eq!(claims.exp - claims.iat, expected_duration);
+    }
+
+    #[test]
+    fn verify_token_with_wrong_secret_fails() {
+        let user_id = Uuid::new_v4();
+        let token = create_token(user_id, TEST_SECRET).expect("should create token");
+        let result = verify_token(&token, "wrong-secret");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn verify_invalid_token_string_fails() {
+        let result = verify_token("not.a.valid.jwt.token", TEST_SECRET);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn verify_empty_token_fails() {
+        let result = verify_token("", TEST_SECRET);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn expired_token_fails_verification() {
+        let user_id = Uuid::new_v4();
+        let now = Utc::now();
+        // Create a token that expired 1 hour ago.
+        let claims = Claims {
+            sub: user_id,
+            iat: (now - Duration::hours(2)).timestamp(),
+            exp: (now - Duration::hours(1)).timestamp(),
+        };
+
+        let token = jsonwebtoken::encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(TEST_SECRET.as_bytes()),
+        )
+        .expect("should encode token");
+
+        let result = verify_token(&token, TEST_SECRET);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn different_users_get_different_tokens() {
+        let user1 = Uuid::new_v4();
+        let user2 = Uuid::new_v4();
+        let token1 = create_token(user1, TEST_SECRET).expect("token1");
+        let token2 = create_token(user2, TEST_SECRET).expect("token2");
+        assert_ne!(token1, token2);
+
+        let claims1 = verify_token(&token1, TEST_SECRET).expect("verify1");
+        let claims2 = verify_token(&token2, TEST_SECRET).expect("verify2");
+        assert_eq!(claims1.sub, user1);
+        assert_eq!(claims2.sub, user2);
+    }
+}

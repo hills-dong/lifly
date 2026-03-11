@@ -1,5 +1,11 @@
+use std::path::PathBuf;
+
+use base64::Engine;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use sqlx::PgPool;
+use tokio::fs;
+use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 
 use crate::common::{AppConfig, AppError, AppResult};
@@ -17,6 +23,8 @@ pub struct ExecutionContext {
     pub tool_id: Uuid,
     pub pipeline_id: Uuid,
     pub user_id: Uuid,
+    pub file_storage_path: PathBuf,
+    pub raw_input_id: Option<Uuid>,
 }
 
 /// Dispatches step execution to the appropriate runtime.
@@ -57,14 +65,44 @@ impl StepExecutor {
                 }))
             }
             "image_upload" => {
-                // Pass through image data.
+                // Extract base64 image data from input.
                 let data = input
                     .get("data")
                     .or_else(|| input.get("raw_content"))
                     .cloned()
                     .unwrap_or(Value::Null);
+
+                let base64_str = match data.as_str() {
+                    Some(s) => s.to_string(),
+                    None => {
+                        // No image data — pass through as before.
+                        return Ok(serde_json::json!({ "result": data }));
+                    }
+                };
+
+                // Decode base64 to bytes and persist to disk + DB.
+                let file_record = Self::save_base64_to_file(
+                    &base64_str,
+                    "image/png", // default; metadata may refine later
+                    "original",
+                    None, // no data_object_id yet
+                    ctx.raw_input_id,
+                    &ctx.pool,
+                    &ctx.file_storage_path,
+                )
+                .await?;
+
+                tracing::info!(
+                    file_storage_id = %file_record.id,
+                    file_path = %file_record.file_path,
+                    "image_upload: persisted original image to disk"
+                );
+
+                // Return base64 data (for downstream LLM steps) plus file_storage_id.
                 Ok(serde_json::json!({
-                    "result": data,
+                    "result": base64_str,
+                    "file_storage_id": file_record.id.to_string(),
+                    "file_path": file_record.file_path,
                 }))
             }
             "data_object_write" => {
@@ -139,6 +177,68 @@ impl StepExecutor {
                     tool_id = %ctx.tool_id,
                     "data_object_write: persisted data object"
                 );
+
+                // Link any original image FileStorage record (from image_upload step)
+                // to this data object.
+                if let Some(original_fs_id) = input
+                    .get("original_file_storage_id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok())
+                {
+                    if let Err(e) = data_repo::update_file_storage_data_object(
+                        &ctx.pool,
+                        original_fs_id,
+                        obj.id,
+                    )
+                    .await
+                    {
+                        tracing::warn!(
+                            error = %e,
+                            "data_object_write: failed to link original FileStorage to DataObject"
+                        );
+                    }
+                }
+
+                // Handle processed image if present: decode, save to disk, create FileStorage record.
+                if let Some(processed) = input.get("processed_image") {
+                    // The processed_image comes from the image_generation LLM step output
+                    // as {"mime_type": "...", "data": "<base64>"}
+                    let proc_base64 = processed
+                        .get("data")
+                        .and_then(|v| v.as_str());
+                    let proc_mime = processed
+                        .get("mime_type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("image/png");
+
+                    if let Some(b64) = proc_base64 {
+                        match Self::save_base64_to_file(
+                            b64,
+                            proc_mime,
+                            "processed",
+                            Some(obj.id),
+                            ctx.raw_input_id,
+                            &ctx.pool,
+                            &ctx.file_storage_path,
+                        )
+                        .await
+                        {
+                            Ok(record) => {
+                                tracing::info!(
+                                    file_storage_id = %record.id,
+                                    data_object_id = %obj.id,
+                                    "data_object_write: persisted processed image"
+                                );
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    error = %e,
+                                    "data_object_write: failed to persist processed image"
+                                );
+                            }
+                        }
+                    }
+                }
 
                 Ok(serde_json::json!({
                     "status": "written",
@@ -251,6 +351,89 @@ impl StepExecutor {
                 "unknown builtin capability: {other}"
             ))),
         }
+    }
+
+    /// Decode a base64 string, write the bytes to disk under the file storage
+    /// directory, and create a `file_storage` DB record.
+    ///
+    /// Returns the created `FileStorage` record.
+    async fn save_base64_to_file(
+        base64_data: &str,
+        mime_type: &str,
+        role: &str,
+        data_object_id: Option<Uuid>,
+        raw_input_id: Option<Uuid>,
+        pool: &PgPool,
+        file_storage_path: &std::path::Path,
+    ) -> AppResult<crate::data::models::FileStorage> {
+        use base64::engine::general_purpose::STANDARD;
+
+        // Decode base64.
+        let bytes = STANDARD.decode(base64_data).map_err(|e| {
+            AppError::Validation(format!("invalid base64 data: {e}"))
+        })?;
+
+        // Determine file extension from MIME type.
+        let extension = match mime_type {
+            "image/png" => "png",
+            "image/jpeg" | "image/jpg" => "jpg",
+            "image/gif" => "gif",
+            "image/webp" => "webp",
+            "image/bmp" => "bmp",
+            "image/tiff" => "tiff",
+            "application/pdf" => "pdf",
+            _ => "bin",
+        };
+
+        // Build storage path: {storage_path}/{year}/{month}/{uuid}.{ext}
+        let now = chrono::Utc::now();
+        let year = now.format("%Y");
+        let month = now.format("%m");
+        let file_uuid = Uuid::new_v4();
+        let file_name = format!("{file_uuid}.{extension}");
+        let relative_path = format!("{year}/{month}/{file_name}");
+        let full_dir = file_storage_path.join(format!("{year}/{month}"));
+        let full_path = file_storage_path.join(&relative_path);
+
+        // Ensure directory exists.
+        fs::create_dir_all(&full_dir)
+            .await
+            .map_err(|e| AppError::Internal(format!("failed to create directory: {e}")))?;
+
+        // Compute SHA-256 checksum.
+        let mut hasher = Sha256::new();
+        hasher.update(&bytes);
+        let checksum = hex::encode(hasher.finalize());
+
+        let file_size = bytes.len() as i64;
+
+        // Write file to disk.
+        let mut file = fs::File::create(&full_path)
+            .await
+            .map_err(|e| AppError::Internal(format!("failed to create file: {e}")))?;
+        file.write_all(&bytes)
+            .await
+            .map_err(|e| AppError::Internal(format!("failed to write file: {e}")))?;
+        file.flush()
+            .await
+            .map_err(|e| AppError::Internal(format!("failed to flush file: {e}")))?;
+
+        // Create database record.
+        let record = data_repo::create_file_storage(
+            pool,
+            data_object_id,
+            raw_input_id,
+            &relative_path,
+            &file_name,
+            mime_type,
+            file_size,
+            &checksum,
+            role,
+        )
+        .await
+        .map_err(AppError::Database)?;
+
+        Ok(record)
     }
 
     /// Execute a remote LLM capability by sending a request to the Gemini API.
@@ -425,5 +608,96 @@ impl StepExecutor {
         Err(AppError::Internal(
             "script runtime is not implemented in M1".to_string(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn try_parse_json_response_valid_object() {
+        let input = r#"{"name": "Alice", "age": 30}"#;
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_object());
+        assert_eq!(result["name"], json!("Alice"));
+        assert_eq!(result["age"], json!(30));
+    }
+
+    #[test]
+    fn try_parse_json_response_valid_array() {
+        let input = r#"[1, 2, 3]"#;
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_array());
+        assert_eq!(result, json!([1, 2, 3]));
+    }
+
+    #[test]
+    fn try_parse_json_response_markdown_fence_with_json_tag() {
+        let input = "Here is the result:\n```json\n{\"key\": \"value\"}\n```\nDone.";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_object());
+        assert_eq!(result["key"], json!("value"));
+    }
+
+    #[test]
+    fn try_parse_json_response_markdown_fence_no_language_tag() {
+        let input = "```\n{\"a\": 1}\n```";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_object());
+        assert_eq!(result["a"], json!(1));
+    }
+
+    #[test]
+    fn try_parse_json_response_plain_text() {
+        let input = "This is just plain text, not JSON at all.";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_string());
+        assert_eq!(result.as_str().unwrap(), input);
+    }
+
+    #[test]
+    fn try_parse_json_response_empty_string() {
+        let input = "";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_string());
+        assert_eq!(result.as_str().unwrap(), "");
+    }
+
+    #[test]
+    fn try_parse_json_response_nested_markdown_fences() {
+        // When the JSON value itself contains ```, the parser's inner find("```")
+        // matches inside the content, resulting in invalid JSON extraction.
+        // The function falls back to returning the original text as a string.
+        let input = "```json\n{\"nested\": \"```inner```\"}\n```";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_string());
+        assert_eq!(result.as_str().unwrap(), input);
+    }
+
+    #[test]
+    fn try_parse_json_response_whitespace_around_json() {
+        let input = "  \n  {\"trimmed\": true}  \n  ";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_object());
+        assert_eq!(result["trimmed"], json!(true));
+    }
+
+    #[test]
+    fn try_parse_json_response_array_in_markdown_fence() {
+        let input = "```json\n[{\"id\": 1}, {\"id\": 2}]\n```";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_array());
+        assert_eq!(result[0]["id"], json!(1));
+    }
+
+    #[test]
+    fn try_parse_json_response_scalar_json_returns_string() {
+        // A JSON scalar (number/string) is not object or array, so it falls through.
+        let input = "42";
+        let result = StepExecutor::try_parse_json_response(input);
+        assert!(result.is_string());
+        assert_eq!(result.as_str().unwrap(), "42");
     }
 }
