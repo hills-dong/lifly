@@ -1,34 +1,34 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { dataObjects as doApi, files as filesApi } from '../api';
 import type { DataObject, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
+import { useFetchData } from '../hooks/useFetchData';
+import ImageGallery from '../components/ImageGallery';
 
 export default function DataObjectPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [obj, setObj] = useState<DataObject | null>(null);
   const [editing, setEditing] = useState(false);
   const [editAttrs, setEditAttrs] = useState('');
+  const [obj, setObj] = useState<DataObject | null>(null);
   const [associatedFiles, setAssociatedFiles] = useState<FileStorage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  useEffect(() => {
-    if (!id) return;
-    doApi
-      .getDataObject(id)
-      .then((data) => {
-        setObj(data);
-        setEditAttrs(JSON.stringify(data.attributes, null, 2));
-        // The detail endpoint returns files alongside the data object
-        if (data.files) {
-          setAssociatedFiles(data.files);
-        }
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id]);
+  const { loading, error } = useFetchData<DataObject>(
+    () =>
+      id
+        ? doApi.getDataObject(id).then((data) => {
+            setObj(data);
+            setEditAttrs(JSON.stringify(data.attributes, null, 2));
+            if (data.files) {
+              setAssociatedFiles(data.files);
+            }
+            return data;
+          })
+        : Promise.reject(new Error('No ID')),
+    [id],
+  );
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
@@ -41,7 +41,7 @@ export default function DataObjectPage() {
       setObj(updated);
       setEditing(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Update failed');
+      setActionError(err instanceof Error ? err.message : 'Update failed');
     }
   };
 
@@ -52,12 +52,14 @@ export default function DataObjectPage() {
       await doApi.deleteDataObject(id);
       navigate(-1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Delete failed');
+      setActionError(err instanceof Error ? err.message : 'Delete failed');
     }
   };
 
+  const displayError = error || actionError;
+
   if (loading) return <div className="loading">Loading...</div>;
-  if (error) return <div className="alert alert-error">{error}</div>;
+  if (displayError) return <div className="alert alert-error">{displayError}</div>;
   if (!obj) return <div className="alert alert-error">Not found</div>;
 
   return (
@@ -129,30 +131,9 @@ export default function DataObjectPage() {
           </div>
 
           {associatedFiles.filter((f) => f.mime_type.startsWith('image/')).length > 0 && (
-            <>
-              <h2>Images</h2>
-              <div className="image-gallery" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
-                {associatedFiles
-                  .filter((f) => f.mime_type.startsWith('image/'))
-                  .map((f) => (
-                    <div key={f.id} className="image-preview" style={{ textAlign: 'center' }}>
-                      <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
-                        <img
-                          src={filesApi.getFileUrl(f.id)}
-                          alt={f.file_name}
-                          style={{ maxWidth: '400px', maxHeight: '300px', borderRadius: '8px', border: '1px solid #ddd', objectFit: 'contain' }}
-                        />
-                      </a>
-                      <div style={{ marginTop: '4px', fontSize: '0.85em', color: '#666' }}>
-                        <span style={{ textTransform: 'capitalize' }}>{f.role}</span>
-                        {' \u00b7 '}
-                        {(f.file_size / 1024).toFixed(1)} KB
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </>
+            <h2>Images</h2>
           )}
+          <ImageGallery files={associatedFiles} />
 
           {associatedFiles.filter((f) => !f.mime_type.startsWith('image/')).length > 0 && (
             <>

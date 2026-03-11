@@ -1,25 +1,17 @@
 import { useState, type FormEvent } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { rawInputs } from '../api';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { usePipelineStatus } from '../hooks/usePipelineStatus';
 
 export default function TodoInputPage() {
   const { id: toolId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [pipelineStatus, setPipelineStatus] = useState('');
-  const [pipelineId, setPipelineId] = useState('');
   const [error, setError] = useState('');
 
-  useWebSocket((msg) => {
-    if (msg.type === 'pipeline.status' && pipelineId && msg.payload.pipeline_id === pipelineId) {
-      const status = msg.payload.status as string;
-      setPipelineStatus(status);
-      if (status === 'completed') {
-        setTimeout(() => navigate(`/tools/${toolId}`), 1000);
-      }
-    }
+  const { pipelineStatus, setPipelineId } = usePipelineStatus(() => {
+    setTimeout(() => navigate(`/tools/${toolId}`), 1000);
   });
 
   const handleSubmit = async (e: FormEvent) => {
@@ -34,7 +26,6 @@ export default function TodoInputPage() {
         raw_content: content.trim(),
       });
       if (result.pipeline_id) setPipelineId(result.pipeline_id);
-      setPipelineStatus('submitted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create todo');
       setSubmitting(false);

@@ -1,20 +1,13 @@
-import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { tools as toolsApi } from '../api';
 import type { Tool } from '../api/types';
+import { useFetchData } from '../hooks/useFetchData';
 
 export default function HomePage() {
-  const [toolList, setToolList] = useState<Tool[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    toolsApi
-      .listTools()
-      .then(setToolList)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const { data: toolList, loading, error } = useFetchData<Tool[]>(
+    () => toolsApi.listTools(),
+    [],
+  );
 
   if (loading) return <div className="loading">Loading...</div>;
   if (error) return <div className="alert alert-error">{error}</div>;
@@ -22,7 +15,7 @@ export default function HomePage() {
   return (
     <div>
       <h1>Tools</h1>
-      {toolList.length === 0 ? (
+      {!toolList || toolList.length === 0 ? (
         <p className="empty-state">No tools available yet.</p>
       ) : (
         <div className="card-grid">

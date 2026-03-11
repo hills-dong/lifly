@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, type DragEvent } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { rawInputs, dataObjects as doApi, files as filesApi } from '../api';
 import type { DataObject, FileStorage } from '../api/types';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { usePipelineStatus } from '../hooks/usePipelineStatus';
+import ImageGallery from '../components/ImageGallery';
 
 const CERT_FIELDS: { key: string; label: string }[] = [
   { key: 'cert_type', label: '证件类型' },
@@ -18,8 +19,6 @@ export default function DocUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [pipelineStatus, setPipelineStatus] = useState('');
-  const [pipelineId, setPipelineId] = useState('');
   const [error, setError] = useState('');
   const [resultObject, setResultObject] = useState<DataObject | null>(null);
   const [resultFiles, setResultFiles] = useState<FileStorage[]>([]);
@@ -49,15 +48,7 @@ export default function DocUploadPage() {
     }
   }, [toolId]);
 
-  useWebSocket((msg) => {
-    if (msg.type === 'pipeline.status' && pipelineId && msg.payload.pipeline_id === pipelineId) {
-      const status = msg.payload.status as string;
-      setPipelineStatus(status);
-      if (status === 'completed') {
-        loadResult();
-      }
-    }
-  });
+  const { pipelineStatus, setPipelineId } = usePipelineStatus(loadResult);
 
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault();
@@ -109,7 +100,6 @@ export default function DocUploadPage() {
         },
       });
       if (result.pipeline_id) setPipelineId(result.pipeline_id);
-      setPipelineStatus('submitted');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       setSubmitting(false);
@@ -119,8 +109,6 @@ export default function DocUploadPage() {
   const handleReset = () => {
     setFile(null);
     setSubmitting(false);
-    setPipelineStatus('');
-    setPipelineId('');
     setError('');
     setResultObject(null);
     setResultFiles([]);
@@ -138,22 +126,7 @@ export default function DocUploadPage() {
         <div className="alert alert-success">Pipeline completed — fields extracted</div>
 
         {resultFiles.length > 0 ? (
-          <div className="doc-image-preview" style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', marginBottom: '16px' }}>
-            {resultFiles.map((f) => (
-              <div key={f.id} style={{ textAlign: 'center' }}>
-                <a href={filesApi.getFileUrl(f.id)} target="_blank" rel="noopener noreferrer">
-                  <img
-                    src={filesApi.getFileUrl(f.id)}
-                    alt={f.file_name}
-                    style={{ maxWidth: '400px', borderRadius: '8px', border: '1px solid #ddd' }}
-                  />
-                </a>
-                <div style={{ marginTop: '4px', fontSize: '0.85em', color: '#666', textTransform: 'capitalize' }}>
-                  {f.role}
-                </div>
-              </div>
-            ))}
-          </div>
+          <ImageGallery files={resultFiles} />
         ) : imagePreview ? (
           <div className="doc-image-preview">
             <img src={imagePreview} alt="Uploaded document" style={{ maxWidth: '400px', borderRadius: '8px', border: '1px solid #ddd' }} />

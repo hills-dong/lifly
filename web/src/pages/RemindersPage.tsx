@@ -1,29 +1,20 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { reminders as remindersApi } from '../api';
 import type { Reminder } from '../api/types';
+import { useFetchData } from '../hooks/useFetchData';
 
 export default function RemindersPage() {
-  const [reminderList, setReminderList] = useState<Reminder[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formDueAt, setFormDueAt] = useState('');
+  const [actionError, setActionError] = useState('');
 
-  const fetchReminders = () => {
-    setLoading(true);
-    remindersApi
-      .listReminders({ status: statusFilter || undefined })
-      .then(setReminderList)
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    fetchReminders();
-  }, [statusFilter]);
+  const { data: reminderList, loading, error, refetch } = useFetchData<Reminder[]>(
+    () => remindersApi.listReminders({ status: statusFilter || undefined }),
+    [statusFilter],
+  );
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
@@ -37,18 +28,18 @@ export default function RemindersPage() {
       setFormTitle('');
       setFormDescription('');
       setFormDueAt('');
-      fetchReminders();
+      refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create reminder');
+      setActionError(err instanceof Error ? err.message : 'Failed to create reminder');
     }
   };
 
   const handleDismiss = async (id: string) => {
     try {
       await remindersApi.dismissReminder(id);
-      fetchReminders();
+      refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to dismiss reminder');
+      setActionError(err instanceof Error ? err.message : 'Failed to dismiss reminder');
     }
   };
 
@@ -56,11 +47,14 @@ export default function RemindersPage() {
     if (!window.confirm('Delete this reminder?')) return;
     try {
       await remindersApi.deleteReminder(id);
-      fetchReminders();
+      refetch();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete reminder');
+      setActionError(err instanceof Error ? err.message : 'Failed to delete reminder');
     }
   };
+
+  const displayError = error || actionError;
+  const items = reminderList ?? [];
 
   return (
     <div>
@@ -73,7 +67,7 @@ export default function RemindersPage() {
         </div>
       </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {displayError && <div className="alert alert-error">{displayError}</div>}
 
       {showForm && (
         <form onSubmit={handleCreate} className="form card" style={{ marginBottom: '1.5rem' }}>
@@ -122,11 +116,11 @@ export default function RemindersPage() {
 
       {loading ? (
         <div className="loading">Loading...</div>
-      ) : reminderList.length === 0 ? (
+      ) : items.length === 0 ? (
         <p className="empty-state">No reminders.</p>
       ) : (
         <ul className="reminder-list">
-          {reminderList.map((r) => (
+          {items.map((r) => (
             <li key={r.id} className={`reminder-item reminder-${r.status}`}>
               <div className="reminder-info">
                 <strong>{r.title}</strong>

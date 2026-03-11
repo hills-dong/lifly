@@ -3,29 +3,34 @@ import { useParams, Link } from 'react-router-dom';
 import { tools as toolsApi, dataObjects as doApi, files as filesApi } from '../api';
 import type { Tool, DataObject, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
+import { useFetchData } from '../hooks/useFetchData';
 
 export default function ToolPage() {
   const { id } = useParams<{ id: string }>();
-  const [tool, setTool] = useState<Tool | null>(null);
   const [objects, setObjects] = useState<DataObject[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [thumbnails, setThumbnails] = useState<Record<string, FileStorage | null>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (!id) return;
-    Promise.all([
-      toolsApi.getTool(id),
-      doApi.listDataObjects({ tool_id: id, status: statusFilter || undefined }),
-    ])
-      .then(([t, res]) => {
-        setTool(t);
-        setObjects(Array.isArray(res) ? res : []);
-      })
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
-  }, [id, statusFilter]);
+  const { data: tool, loading: toolLoading, error: toolError } = useFetchData<Tool>(
+    () => (id ? toolsApi.getTool(id) : Promise.reject(new Error('No tool ID'))),
+    [id],
+  );
+
+  const { loading: objLoading, error: objError } = useFetchData<DataObject[]>(
+    () =>
+      id
+        ? doApi.listDataObjects({ tool_id: id, status: statusFilter || undefined })
+            .then((res) => {
+              const list = Array.isArray(res) ? res : [];
+              setObjects(list);
+              return list;
+            })
+        : Promise.resolve([]),
+    [id, statusFilter],
+  );
+
+  const loading = toolLoading || objLoading;
+  const error = toolError || objError;
 
   // Fetch thumbnail images for doc-type data objects
   useEffect(() => {
@@ -39,7 +44,6 @@ export default function ToolPage() {
       setThumbnails((prev) => ({ ...prev, [obj.id]: null })); // mark as in-flight
       filesApi.listByDataObject(obj.id).then((fileList) => {
         const files = Array.isArray(fileList) ? fileList : [];
-        // Prefer "original" role image, fall back to any image
         const original = files.find((f: FileStorage) => f.mime_type.startsWith('image/') && f.role === 'original');
         const anyImage = files.find((f: FileStorage) => f.mime_type.startsWith('image/'));
         const thumb = original || anyImage || null;
