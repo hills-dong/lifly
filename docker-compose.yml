@@ -10,7 +10,7 @@ services:
       - LLM_API_URL=${LLM_API_URL:-https://generativelanguage.googleapis.com}
       - JWT_SECRET=${JWT_SECRET:-default-dev-secret-change-in-production}
     volumes:
-      - file_storage:/data/files
+      - ${LIFLY_DATA_DIR:-~/docker/lifly}/files:/data/files
     depends_on:
       db:
         condition: service_healthy
@@ -22,7 +22,7 @@ services:
       - POSTGRES_PASSWORD=lifly
       - POSTGRES_DB=lifly
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ${LIFLY_DATA_DIR:-~/docker/lifly}/postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -30,7 +30,3 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-
-volumes:
-  db_data:
-  file_storage:

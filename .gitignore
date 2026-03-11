@@ -11,8 +11,5 @@ dist/
 # Logs
 *.log
 
-# Data (Docker volume mount, not source code)
-/data/
-
 # OS
 .DS_Store
