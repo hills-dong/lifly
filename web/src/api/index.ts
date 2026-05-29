@@ -5,6 +5,7 @@ import type {
   Tool,
   DataObject,
   DataObjectDetail,
+  CreateDataObjectRequest,
   UpdateDataObjectRequest,
   CreateRawInputRequest,
   Pipeline,
@@ -42,6 +43,9 @@ export const tools = {
 export const dataObjects = {
   listDataObjects: (params?: { tool_id?: string; type?: string; status?: string; limit?: number; offset?: number }) =>
     client.get<DataObject[]>('/api/data-objects', { params }).then((r) => r.data),
+
+  createDataObject: (data: CreateDataObjectRequest) =>
+    client.post<DataObject>('/api/data-objects', data).then((r) => r.data),
 
   getDataObject: (id: string) =>
     client.get<DataObjectDetail>(`/api/data-objects/${id}`).then((r) => r.data),

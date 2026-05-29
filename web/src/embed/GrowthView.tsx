@@ -1,7 +1,45 @@
 import { useMemo, useState } from 'react';
 import type { DataObject } from '../api/types';
+import { dataObjects as doApi } from '../api';
 import { WHO_STANDARDS } from './growthStandards';
 import type { GrowthBand, Metric, Sex } from './growthStandards';
+import './embed.css';
+
+const DAY = 86_400_000;
+const MS_PER_MONTH = 30.4375 * DAY;
+
+/** Derive the child's birth time (ms) from existing records: birth = date − age_months. */
+function deriveBirthMs(items: DataObject[]): number | null {
+  const births: number[] = [];
+  for (const o of items) {
+    const d = typeof o.attributes?.date === 'string' ? Date.parse(o.attributes.date as string) : NaN;
+    const am = typeof o.attributes?.age_months === 'number' ? (o.attributes.age_months as number) : NaN;
+    if (!Number.isNaN(d) && !Number.isNaN(am)) births.push(d - am * MS_PER_MONTH);
+  }
+  if (!births.length) return null;
+  births.sort((a, b) => a - b);
+  return births[Math.floor(births.length / 2)];
+}
+
+/** Human age label (5岁8月6天 / 3月25天 / 22天) from birth → measurement date. */
+function ageLabelFrom(birthMs: number, dateMs: number): string {
+  const b = new Date(birthMs);
+  const d = new Date(dateMs);
+  let years = d.getFullYear() - b.getFullYear();
+  let months = d.getMonth() - b.getMonth();
+  let days = d.getDate() - b.getDate();
+  if (days < 0) {
+    days += new Date(d.getFullYear(), d.getMonth(), 0).getDate();
+    months -= 1;
+  }
+  if (months < 0) {
+    months += 12;
+    years -= 1;
+  }
+  if (years > 0) return `${years}岁${months}月${days}天`;
+  if (months > 0) return `${months}月${days}天`;
+  return `${days}天`;
+}
 
 function num(obj: DataObject, key: string): number | undefined {
   const v = obj.attributes?.[key];
@@ -158,7 +196,15 @@ function GrowthChart({
 
 type Tab = 'list' | 'height' | 'weight';
 
-export default function GrowthView({ items }: { items: DataObject[] }) {
+export default function GrowthView({
+  items,
+  toolId,
+  onChanged,
+}: {
+  items: DataObject[];
+  toolId: string;
+  onChanged: () => void | Promise<void>;
+}) {
   const [tab, setTab] = useState<Tab>('list');
   const [sex, setSex] = useState<Sex>(
     () => (typeof localStorage !== 'undefined' && (localStorage.getItem(SEX_KEY) as Sex)) || 'male',
@@ -170,6 +216,67 @@ export default function GrowthView({ items }: { items: DataObject[] }) {
       localStorage.setItem(SEX_KEY, s);
     } catch {
       /* ignore */
+    }
+  };
+
+  // Add-record form state.
+  const today = new Date().toISOString().slice(0, 10);
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [formErr, setFormErr] = useState('');
+  const [fDate, setFDate] = useState(today);
+  const [fHeight, setFHeight] = useState('');
+  const [fWeight, setFWeight] = useState('');
+  const [fBirth, setFBirth] = useState('');
+
+  const birthMs = useMemo(() => deriveBirthMs(items), [items]);
+
+  const submitAdd = async () => {
+    setFormErr('');
+    const dateMs = Date.parse(fDate);
+    if (Number.isNaN(dateMs)) return setFormErr('请填写有效日期');
+    const h = fHeight.trim() ? Number(fHeight) : undefined;
+    const w = fWeight.trim() ? Number(fWeight) : undefined;
+    if (h == null && w == null) return setFormErr('请至少填写身高或体重');
+    if ((h != null && (Number.isNaN(h) || h <= 0)) || (w != null && (Number.isNaN(w) || w <= 0)))
+      return setFormErr('身高/体重需为正数');
+    let birth = birthMs;
+    if (birth == null) {
+      const bMs = Date.parse(fBirth);
+      if (Number.isNaN(bMs)) return setFormErr('首次添加请填写宝宝出生日期');
+      birth = bMs;
+    }
+    const ageMonths = Math.round(((dateMs - birth) / MS_PER_MONTH) * 100) / 100;
+    if (ageMonths < 0) return setFormErr('测量日期早于出生日期');
+    const attributes: Record<string, unknown> = {
+      date: fDate,
+      age_months: ageMonths,
+      age_label: ageLabelFrom(birth, dateMs),
+    };
+    if (h != null) attributes.height_cm = h;
+    if (w != null) attributes.weight_kg = w;
+    setBusy(true);
+    try {
+      await doApi.createDataObject({ tool_id: toolId, attributes });
+      setFHeight('');
+      setFWeight('');
+      setFDate(today);
+      setAdding(false);
+      await onChanged();
+    } catch (e) {
+      setFormErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const removeRecord = async (id: string) => {
+    if (typeof window !== 'undefined' && !window.confirm('删除这条记录？')) return;
+    try {
+      await doApi.deleteDataObject(id);
+      await onChanged();
+    } catch (e) {
+      setFormErr(e instanceof Error ? e.message : String(e));
     }
   };
 
@@ -215,6 +322,38 @@ export default function GrowthView({ items }: { items: DataObject[] }) {
             <span className="growth-sum-age">{str(latest, 'age_label') ?? ''}</span>
             <span className="growth-sum-lbl">{str(latest, 'date')}</span>
           </div>
+        </div>
+      )}
+
+      <div className="growth-addbar">
+        <button className="growth-addbtn" onClick={() => { setAdding((v) => !v); setFormErr(''); }}>
+          {adding ? '取消' : '＋ 添加记录'}
+        </button>
+      </div>
+      {adding && (
+        <div className="growth-form">
+          {formErr && <div className="growth-formerr">{formErr}</div>}
+          <label className="growth-field">
+            <span>日期</span>
+            <input type="date" value={fDate} max={today} onChange={(e) => setFDate(e.target.value)} />
+          </label>
+          {birthMs == null && (
+            <label className="growth-field">
+              <span>出生日期</span>
+              <input type="date" value={fBirth} max={today} onChange={(e) => setFBirth(e.target.value)} />
+            </label>
+          )}
+          <label className="growth-field">
+            <span>身高 cm</span>
+            <input type="number" inputMode="decimal" step="0.1" value={fHeight} placeholder="选填" onChange={(e) => setFHeight(e.target.value)} />
+          </label>
+          <label className="growth-field">
+            <span>体重 kg</span>
+            <input type="number" inputMode="decimal" step="0.1" value={fWeight} placeholder="选填" onChange={(e) => setFWeight(e.target.value)} />
+          </label>
+          <button className="growth-savebtn" onClick={submitAdd} disabled={busy}>
+            {busy ? '保存中…' : '保存'}
+          </button>
         </div>
       )}
 
@@ -265,6 +404,9 @@ export default function GrowthView({ items }: { items: DataObject[] }) {
                 <div className="growth-row-head">
                   <span className="growth-row-date">{str(o, 'date')}</span>
                   <span className="growth-row-age">{str(o, 'age_label')}</span>
+                  <button className="growth-rowdel" onClick={() => removeRecord(o.id)} aria-label="删除">
+                    ✕
+                  </button>
                 </div>
                 <div className="growth-row-vals">
                   <div className="growth-metric">

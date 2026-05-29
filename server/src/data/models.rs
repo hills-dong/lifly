@@ -96,6 +96,14 @@ pub struct DataObjectDetailResponse {
     pub updated_at: DateTime<Utc>,
 }
 
+/// Request body for `POST /api/data-objects`.
+#[derive(Debug, Deserialize)]
+pub struct CreateDataObjectRequest {
+    pub tool_id: Uuid,
+    pub attributes: serde_json::Value,
+    pub category_id: Option<Uuid>,
+}
+
 /// Request body for `PUT /api/data-objects/:id`.
 #[derive(Debug, Deserialize)]
 pub struct UpdateDataObjectRequest {

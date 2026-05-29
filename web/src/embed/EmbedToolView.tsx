@@ -184,7 +184,7 @@ export default function EmbedToolView({ toolId }: { toolId: string }) {
       <div className="embed">
         {!isNative && tool && <h1 className="embed-title">{tool.name}</h1>}
         {error && <div className="embed-error">{error}</div>}
-        {items.length === 0 ? <div className="embed-state">还没有记录</div> : <GrowthView items={items} />}
+        <GrowthView items={items} toolId={toolId} onChanged={loadItems} />
       </div>
     );
   }

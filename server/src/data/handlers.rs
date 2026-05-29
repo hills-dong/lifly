@@ -12,9 +12,9 @@ use uuid::Uuid;
 use crate::common::{ApiResponse, AppError, AppResult, AppState, AuthUser, save_file_to_storage};
 
 use super::models::{
-    CategoryResponse, CreateCategoryRequest, DataObjectDetailResponse, DataObjectQuery,
-    DataObjectResponse, FileStorageResponse, UpdateCategoryRequest, UpdateDataObjectRequest,
-    UploadResponse,
+    CategoryResponse, CreateCategoryRequest, CreateDataObjectRequest, DataObjectDetailResponse,
+    DataObjectQuery, DataObjectResponse, FileStorageResponse, UpdateCategoryRequest,
+    UpdateDataObjectRequest, UploadResponse,
 };
 use super::repo;
 
@@ -29,6 +29,25 @@ async fn list_data_objects(
     let rows = repo::list_data_objects(&state.pool, &query).await?;
     let data = rows.into_iter().map(DataObjectResponse::from).collect();
     Ok(ApiResponse::success(data))
+}
+
+/// POST /api/data-objects — create a data object directly (no pipeline).
+/// Used by display-type tools like 成长记录 to add records manually.
+async fn create_data_object(
+    State(state): State<AppState>,
+    _auth: AuthUser,
+    Json(body): Json<CreateDataObjectRequest>,
+) -> AppResult<ApiResponse<DataObjectResponse>> {
+    let created = repo::create_data_object(
+        &state.pool,
+        body.tool_id,
+        None,
+        None,
+        body.category_id,
+        &body.attributes,
+    )
+    .await?;
+    Ok(ApiResponse::success(DataObjectResponse::from(created)))
 }
 
 /// GET /api/data-objects/:id
@@ -325,7 +344,7 @@ async fn delete_category(
 pub fn routes() -> Router<AppState> {
     Router::new()
         // Data objects
-        .route("/api/data-objects", get(list_data_objects))
+        .route("/api/data-objects", get(list_data_objects).post(create_data_object))
         .route("/api/data-objects/search", get(search_data_objects))
         .route(
             "/api/data-objects/{id}",

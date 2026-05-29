@@ -54,7 +54,7 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('shows the latest measurement in the summary', () => {
-    render(<GrowthView items={records} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
     const summary = document.querySelector('.growth-summary') as HTMLElement;
     expect(summary).toBeTruthy();
     expect(within(summary).getByText('115')).toBeInTheDocument();
@@ -63,7 +63,7 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('renders every record as a list row, newest first', () => {
-    render(<GrowthView items={records} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
     const rows = document.querySelectorAll('.growth-row');
     expect(rows.length).toBe(41);
     // First row is the newest date.
@@ -73,7 +73,7 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('shows an em-dash for a record missing height', () => {
-    render(<GrowthView items={records} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
     // 2022-03-22 has only weight (10.8), no height.
     const rows = Array.from(document.querySelectorAll('.growth-row')) as HTMLElement[];
     const row = rows.find((r) => within(r).queryByText('2022-03-22'));
@@ -83,14 +83,14 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('classifies measurements against WHO bands (chips render)', () => {
-    render(<GrowthView items={records} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
     // At least some normal/low chips should appear given this child trends low.
     expect(document.querySelectorAll('.growth-chip').length).toBeGreaterThan(0);
   });
 
   it('renders the height curve with percentile bands and the child line', async () => {
     const user = userEvent.setup();
-    render(<GrowthView items={records} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
     await user.click(screen.getByRole('button', { name: '身高曲线' }));
 
     const svg = document.querySelector('svg.growth-chart');
@@ -106,7 +106,7 @@ describe('GrowthView with seeded records', () => {
 
   it('switches to the weight curve and honors the sex toggle', async () => {
     const user = userEvent.setup();
-    render(<GrowthView items={records} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
     await user.click(screen.getByRole('button', { name: '体重曲线' }));
     expect(document.querySelector('svg.growth-chart')).toBeTruthy();
 

@@ -245,6 +245,83 @@
   margin-top: 2px;
 }
 
+.growth-addbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+.growth-addbtn {
+  border: none;
+  background: #4a85e0;
+  color: #fff;
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.growth-form {
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.growth-formerr {
+  background: #fde7e7;
+  color: #c0392b;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+.growth-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+  color: #3c3c43;
+}
+.growth-field input {
+  flex: 1;
+  max-width: 220px;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 16px;
+  outline: none;
+}
+.growth-field input:focus {
+  border-color: #4a85e0;
+}
+.growth-savebtn {
+  border: none;
+  background: #4a85e0;
+  color: #fff;
+  border-radius: 9px;
+  padding: 10px 0;
+  font-size: 15px;
+  cursor: pointer;
+}
+.growth-savebtn:disabled {
+  opacity: 0.5;
+}
+.growth-rowdel {
+  margin-left: auto;
+  border: none;
+  background: none;
+  color: #c7c7cc;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.growth-rowdel:hover {
+  color: #c0392b;
+}
+
 .growth-tabs {
   display: flex;
   gap: 6px;

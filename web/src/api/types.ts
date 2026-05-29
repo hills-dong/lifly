@@ -158,6 +158,12 @@ export interface UpdateReminderRequest {
   status?: string;
 }
 
+export interface CreateDataObjectRequest {
+  tool_id: string;
+  attributes: Record<string, unknown>;
+  category_id?: string;
+}
+
 export interface UpdateDataObjectRequest {
   attributes?: Record<string, unknown>;
   category_id?: string;

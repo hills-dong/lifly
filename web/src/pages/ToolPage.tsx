@@ -4,6 +4,7 @@ import { tools as toolsApi, dataObjects as doApi, files as filesApi } from '../a
 import type { Tool, DataObject, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
 import { useFetchData } from '../hooks/useFetchData';
+import GrowthView from '../embed/GrowthView';
 
 export default function ToolPage() {
   const { id } = useParams<{ id: string }>();
@@ -19,7 +20,7 @@ export default function ToolPage() {
   const { loading: objLoading, error: objError } = useFetchData<DataObject[]>(
     () =>
       id
-        ? doApi.listDataObjects({ tool_id: id, status: statusFilter || undefined })
+        ? doApi.listDataObjects({ tool_id: id, status: statusFilter || undefined, limit: 200 })
             .then((res) => {
               const list = Array.isArray(res) ? res : [];
               setObjects(list);
@@ -28,6 +29,13 @@ export default function ToolPage() {
         : Promise.resolve([]),
     [id, statusFilter],
   );
+
+  const reloadObjects = () =>
+    id
+      ? doApi
+          .listDataObjects({ tool_id: id, status: statusFilter || undefined, limit: 200 })
+          .then((res) => setObjects(Array.isArray(res) ? res : []))
+      : Promise.resolve();
 
   const loading = toolLoading || objLoading;
   const error = toolError || objError;
@@ -76,6 +84,7 @@ export default function ToolPage() {
   const nameLower = (tool.name + ' ' + tool.description).toLowerCase();
   const isTodo = nameLower.includes('todo');
   const isDoc = nameLower.includes('证件') || nameLower.includes('document') || nameLower.includes('id-doc');
+  const isGrowth = nameLower.includes('成长') || nameLower.includes('growth');
 
   return (
     <div>
@@ -99,6 +108,10 @@ export default function ToolPage() {
         </div>
       </div>
 
+      {isGrowth ? (
+        <GrowthView items={objects} toolId={id!} onChanged={reloadObjects} />
+      ) : (
+      <>
       <div className="filter-bar">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
           <option value="">All statuses</option>
@@ -174,6 +187,8 @@ export default function ToolPage() {
             ))}
           </tbody>
         </table>
+      )}
+      </>
       )}
     </div>
   );
