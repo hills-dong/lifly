@@ -1,0 +1,25 @@
+<svg width="150" height="40" viewBox="0 0 150 40" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="liflyLogoTitle">
+  <title id="liflyLogoTitle">Lifly</title>
+  <defs>
+    <linearGradient id="lifly-mark-gradient" x1="6" y1="34" x2="35" y2="5" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2A9D8F"/>
+      <stop offset="0.55" stop-color="#4361EE"/>
+      <stop offset="1" stop-color="#7C5CFF"/>
+    </linearGradient>
+    <linearGradient id="lifly-flow-gradient" x1="10" y1="28" x2="31" y2="8" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B9F5EA"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+
+  <g>
+    <rect x="2" y="2" width="36" height="36" rx="10" fill="#F7FAFF"/>
+    <path d="M11.4 29.1C12.6 20.7 18.4 13.5 27.3 8.4C29.1 7.4 31 9.1 30.3 11.1C28.3 16.5 24.9 20.5 19.9 23.1C22.1 24.4 25 24.8 28.8 24.2C30.9 23.9 32 26.5 30.4 27.9C25.4 32.1 18.7 32.4 11.4 29.1Z" fill="url(#lifly-mark-gradient)"/>
+    <path d="M11.4 29.1C13.8 23.1 18.8 18.4 26.1 15" stroke="url(#lifly-flow-gradient)" stroke-width="3.2" stroke-linecap="round"/>
+    <circle cx="16.2" cy="24.2" r="2.2" fill="#FFFFFF" fill-opacity="0.92"/>
+    <circle cx="22.5" cy="18.4" r="2.2" fill="#FFFFFF" fill-opacity="0.92"/>
+    <circle cx="27.8" cy="11.7" r="2.2" fill="#FFFFFF" fill-opacity="0.92"/>
+  </g>
+
+  <text x="50" y="28" fill="#F9FBFF" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="24" font-weight="750" letter-spacing="0">Lifly</text>
+</svg>

@@ -1,0 +1,19 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lifly-mark-gradient" x1="10" y1="54" x2="53" y2="9" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2A9D8F"/>
+      <stop offset="0.55" stop-color="#4361EE"/>
+      <stop offset="1" stop-color="#7C5CFF"/>
+    </linearGradient>
+    <linearGradient id="lifly-flow-gradient" x1="19" y1="45" x2="47" y2="16" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B9F5EA"/>
+      <stop offset="1" stop-color="#FFFFFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="5" y="5" width="54" height="54" rx="16" fill="#F7FAFF"/>
+  <path d="M18.1 46.8C20 33.6 29.2 22.2 43.3 14.1C46.1 12.5 49.1 15.2 48 18.3C44.9 26.8 39.5 33.2 31.6 37.3C35.1 39.3 39.6 39.9 45.6 39C48.9 38.5 50.7 42.7 48 45C40.2 51.6 29.7 52 18.1 46.8Z" fill="url(#lifly-mark-gradient)"/>
+  <path d="M18.1 46.8C21.9 37.3 29.7 30 41.3 24.7" stroke="url(#lifly-flow-gradient)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="25.7" cy="39.1" r="3.5" fill="#FFFFFF" fill-opacity="0.92"/>
+  <circle cx="35.6" cy="30" r="3.5" fill="#FFFFFF" fill-opacity="0.92"/>
+  <circle cx="44" cy="19.3" r="3.5" fill="#FFFFFF" fill-opacity="0.92"/>
+</svg>

@@ -9,6 +9,7 @@ import DocUploadPage from './pages/DocUploadPage';
 import DataObjectPage from './pages/DataObjectPage';
 import RemindersPage from './pages/RemindersPage';
 import SearchPage from './pages/SearchPage';
+import EmbedToolView from './embed/EmbedToolView';
 import './App.css';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -23,6 +24,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Embedded single-tool runtime loaded by the native iOS shell (no auth gate / chrome). */}
+      <Route path="/embed/tools/:id" element={<EmbedToolView />} />
       <Route
         element={
           <RequireAuth>

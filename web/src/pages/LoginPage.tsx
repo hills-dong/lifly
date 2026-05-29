@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import liflyMark from '../assets/lifly-mark.svg';
 
 export default function LoginPage() {
   const { login, loading } = useAuth();
@@ -23,7 +24,10 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>Lifly</h1>
+        <div className="login-brand">
+          <img src={liflyMark} alt="" className="login-brand-mark" aria-hidden="true" />
+          <h1>Lifly</h1>
+        </div>
         <p className="login-subtitle">Sign in to your account</p>
         {error && <div className="alert alert-error">{error}</div>}
         <form onSubmit={handleSubmit}>

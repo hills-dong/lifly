@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import liflyLogo from '../assets/lifly-logo.svg';
 
 export default function Layout() {
   const { user, logout } = useAuth();
@@ -14,7 +15,7 @@ export default function Layout() {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-brand">
-          <h2>Lifly</h2>
+          <img src={liflyLogo} alt="Lifly" className="brand-logo" />
         </div>
         <nav className="sidebar-nav">
           <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>
