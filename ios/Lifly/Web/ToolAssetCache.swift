@@ -49,22 +49,41 @@ final class ToolAssetCache: NSObject, WKURLSchemeHandler {
             return
         }
 
-        let isImmutableAsset = realURL.path.contains("/assets/")
-        let cacheFile = cachePath(for: realURL)
+        let path = realURL.path
+        let isApi = path.hasPrefix("/api/")
+        // Content-hashed assets and files-by-id are immutable → cache-first.
+        let immutable = path.contains("/assets/") || path.hasPrefix("/api/files/")
+        // Cache web assets and files; never cache other (data) API calls.
+        let shouldCache = immutable || !isApi
+        let dataFile = cacheFile(for: realURL, suffix: "")
+        let ctFile = cacheFile(for: realURL, suffix: ".ct")
 
-        if isImmutableAsset, let data = try? Data(contentsOf: cacheFile) {
-            respond(urlSchemeTask, id: id, requestURL: requestURL, data: data, mime: mimeType(for: realURL))
+        if immutable,
+           let data = try? Data(contentsOf: dataFile),
+           let mime = try? String(contentsOf: ctFile, encoding: .utf8) {
+            respond(urlSchemeTask, id: id, requestURL: requestURL, data: data, mime: mime)
             return
         }
 
-        let task = session.dataTask(with: realURL) { [weak self] data, response, _ in
+        var request = URLRequest(url: realURL)
+        // API resources need auth; inject the bearer token natively so the JWT
+        // is never exposed to in-WebView JavaScript (e.g. <img src="/api/files/...">).
+        if isApi, let token = APIClient.shared.tokenProvider() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+
+        let task = session.dataTask(with: request) { [weak self] data, response, _ in
             guard let self else { return }
             if let data, let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
-                try? data.write(to: cacheFile, options: .atomic)
                 let mime = http.mimeType ?? self.mimeType(for: realURL)
+                if shouldCache {
+                    try? data.write(to: dataFile, options: .atomic)
+                    try? mime.write(to: ctFile, atomically: true, encoding: .utf8)
+                }
                 self.respond(urlSchemeTask, id: id, requestURL: requestURL, data: data, mime: mime)
-            } else if let cached = try? Data(contentsOf: cacheFile) {
-                self.respond(urlSchemeTask, id: id, requestURL: requestURL, data: cached, mime: self.mimeType(for: realURL))
+            } else if let cached = try? Data(contentsOf: dataFile),
+                      let mime = try? String(contentsOf: ctFile, encoding: .utf8) {
+                self.respond(urlSchemeTask, id: id, requestURL: requestURL, data: cached, mime: mime)
             } else {
                 self.fail(urlSchemeTask, id: id)
             }
@@ -88,13 +107,13 @@ final class ToolAssetCache: NSObject, WKURLSchemeHandler {
         return comps.url
     }
 
-    private func cachePath(for url: URL) -> URL {
+    private func cacheFile(for url: URL, suffix: String) -> URL {
         var key = url.path
         if let q = url.query { key += "?" + q }
         // Stable across launches (Swift's String.hashValue is per-process salted).
         let digest = SHA256.hash(data: Data(key.utf8))
         let name = digest.map { String(format: "%02x", $0) }.joined()
-        return cacheDir.appendingPathComponent(name)
+        return cacheDir.appendingPathComponent(name + suffix)
     }
 
     private func respond(_ task: WKURLSchemeTask, id: ObjectIdentifier, requestURL: URL, data: Data, mime: String) {

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { tools as toolsApi, dataObjects as doApi, rawInputs, pipelines } from '../api';
-import type { DataObject, Tool } from '../api/types';
+import { tools as toolsApi, dataObjects as doApi, rawInputs, pipelines, files as filesApi } from '../api';
+import type { DataObject, Tool, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
-import { captureImages, isNative, setTitle } from './lifly';
+import { captureImages, fileURL, isNative, setTitle } from './lifly';
 import './embed.css';
 
 type Kind = 'todo' | 'doc' | 'generic';
@@ -14,6 +14,18 @@ function kindOf(tool: Tool | null): Kind {
   if (s.includes('todo') || s.includes('待办')) return 'todo';
   if (s.includes('证件') || s.includes('document') || s.includes('id-doc')) return 'doc';
   return 'generic';
+}
+
+function attr(obj: DataObject, key: string): string | undefined {
+  const v = obj.attributes?.[key];
+  if (v == null) return undefined;
+  const s = String(v);
+  return s.length ? s : undefined;
+}
+
+function bestImage(list: FileStorage[]): FileStorage | undefined {
+  const imgs = list.filter((f) => f.mime_type.startsWith('image/'));
+  return imgs.find((f) => f.role === 'processed') || imgs.find((f) => f.role === 'original') || imgs[0];
 }
 
 async function waitForPipeline(pipelineId: string) {
@@ -32,6 +44,7 @@ export default function EmbedToolView() {
   const { id: toolId } = useParams<{ id: string }>();
   const [tool, setTool] = useState<Tool | null>(null);
   const [items, setItems] = useState<DataObject[]>([]);
+  const [docImages, setDocImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -58,6 +71,31 @@ export default function EmbedToolView() {
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
   }, [toolId, loadItems]);
+
+  // Load document thumbnails for the doc tool.
+  useEffect(() => {
+    if (kind !== 'doc' || items.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const map: Record<string, string> = {};
+      for (const it of items) {
+        if (docImages[it.id]) continue;
+        try {
+          const fl = await filesApi.listByDataObject(it.id);
+          const img = bestImage(Array.isArray(fl) ? fl : []);
+          if (img) map[it.id] = fileURL(img.id);
+        } catch {
+          /* best-effort */
+        }
+      }
+      if (!cancelled && Object.keys(map).length) {
+        setDocImages((prev) => ({ ...prev, ...map }));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [kind, items, docImages]);
 
   const submitText = async () => {
     const content = text.trim();
@@ -166,8 +204,47 @@ export default function EmbedToolView() {
       ) : (
         <ul className="embed-list">
           {items.map((obj) => {
-            const done = !!obj.attributes?.done;
             const open = expanded === obj.id;
+            if (kind === 'doc') {
+              const thumb = docImages[obj.id];
+              return (
+                <li key={obj.id} className="embed-row">
+                  <div className="embed-doc">
+                    <button className="embed-doc-main" onClick={() => setExpanded(open ? null : obj.id)}>
+                      {thumb ? (
+                        <img className="embed-thumb" src={thumb} alt="" />
+                      ) : (
+                        <div className="embed-thumb embed-thumb-empty">证</div>
+                      )}
+                      <div className="embed-doc-text">
+                        <div className="embed-doc-title">{attr(obj, 'full_name') ?? attr(obj, 'cert_type') ?? displayTitle(obj)}</div>
+                        {attr(obj, 'cert_type') && <div className="embed-doc-sub">{attr(obj, 'cert_type')}</div>}
+                        {attr(obj, 'cert_number') && <div className="embed-doc-sub">{attr(obj, 'cert_number')}</div>}
+                        {attr(obj, 'expiry_date') && <div className="embed-doc-sub">有效期至 {attr(obj, 'expiry_date')}</div>}
+                      </div>
+                    </button>
+                    <button className="embed-del" onClick={() => remove(obj)} aria-label="delete">🗑</button>
+                  </div>
+                  {open && (
+                    <div className="embed-doc-detail">
+                      {thumb && <img className="embed-doc-full" src={thumb} alt="" />}
+                      <dl className="embed-attrs">
+                        {Object.entries(obj.attributes ?? {})
+                          .filter(([, v]) => v != null && String(v).length <= 200)
+                          .map(([k, v]) => (
+                            <div className="embed-attr" key={k}>
+                              <dt>{k}</dt>
+                              <dd>{String(v)}</dd>
+                            </div>
+                          ))}
+                      </dl>
+                    </div>
+                  )}
+                </li>
+              );
+            }
+
+            const done = !!obj.attributes?.done;
             return (
               <li key={obj.id} className={`embed-row ${done ? 'done' : ''}`}>
                 <div className="embed-row-main">
@@ -183,9 +260,7 @@ export default function EmbedToolView() {
                   <button className="embed-row-title" onClick={() => setExpanded(open ? null : obj.id)}>
                     {displayTitle(obj)}
                   </button>
-                  <button className="embed-del" onClick={() => remove(obj)} aria-label="delete">
-                    🗑
-                  </button>
+                  <button className="embed-del" onClick={() => remove(obj)} aria-label="delete">🗑</button>
                 </div>
                 {open && (
                   <dl className="embed-attrs">

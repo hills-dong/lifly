@@ -38,6 +38,17 @@ export const nativeBridge: NativeBridge | null =
 
 export const isNative = !!nativeBridge;
 
+/**
+ * URL for an authenticated file (image) usable in <img src>. In the native shell
+ * the cache proxy injects the bearer token, so no token is needed in the URL; in a
+ * browser we append ?token= (the file endpoint accepts it for <img> tags).
+ */
+export function fileURL(fileId: string): string {
+  if (nativeBridge) return `/api/files/${fileId}`;
+  const token = (typeof localStorage !== 'undefined' && localStorage.getItem('token')) || '';
+  return `/api/files/${fileId}?token=${encodeURIComponent(token)}`;
+}
+
 /** Set the screen title shown by the native shell (no-op-ish on web). */
 export function setTitle(title: string) {
   if (nativeBridge) nativeBridge.setTitle(title);
