@@ -9,7 +9,7 @@ import DocUploadPage from './pages/DocUploadPage';
 import DataObjectPage from './pages/DataObjectPage';
 import RemindersPage from './pages/RemindersPage';
 import SearchPage from './pages/SearchPage';
-import EmbedToolView from './embed/EmbedToolView';
+import { EmbedApp, EmbedRoute } from './embed/EmbedApp';
 import './App.css';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -25,7 +25,9 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       {/* Embedded single-tool runtime loaded by the native iOS shell (no auth gate / chrome). */}
-      <Route path="/embed/tools/:id" element={<EmbedToolView />} />
+      {/* Persistent host: tool driven by native bridge context (fast tool switching). */}
+      <Route path="/embed" element={<EmbedApp />} />
+      <Route path="/embed/tools/:id" element={<EmbedRoute />} />
       <Route
         element={
           <RequireAuth>

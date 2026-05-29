@@ -36,7 +36,7 @@ struct ToolCatalogView: View {
             }
             .refreshable { await registry.load() }
             .task {
-                WebRuntime.shared.prewarmIfNeeded()
+                WebRuntime.shared.ensureLoaded()
                 if !registry.isLoaded { await registry.load() }
             }
         }

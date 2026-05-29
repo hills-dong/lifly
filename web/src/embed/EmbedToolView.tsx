@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
 import { tools as toolsApi, dataObjects as doApi, rawInputs, pipelines, files as filesApi } from '../api';
 import type { DataObject, Tool, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
@@ -40,8 +39,7 @@ async function waitForPipeline(pipelineId: string) {
   }
 }
 
-export default function EmbedToolView() {
-  const { id: toolId } = useParams<{ id: string }>();
+export default function EmbedToolView({ toolId }: { toolId: string }) {
   const [tool, setTool] = useState<Tool | null>(null);
   const [items, setItems] = useState<DataObject[]>([]);
   const [docImages, setDocImages] = useState<Record<string, string>>({});

@@ -37,11 +37,11 @@ final class LiflyBridge: NSObject, WKScriptMessageHandlerWithReply {
     var onScanDocument: () async -> [String]? = { nil }
     var onPickPhotos: (Int) async -> [String]? = { _ in nil }
 
-    let context: [String: Any]
+    private let contextProvider: () -> [String: Any]
     private let allowedHost: String?
 
-    init(context: [String: Any]) {
-        self.context = context
+    init(contextProvider: @escaping () -> [String: Any]) {
+        self.contextProvider = contextProvider
         self.allowedHost = URL(string: AppConfig.webBaseURL)?.host
     }
 
@@ -72,7 +72,7 @@ final class LiflyBridge: NSObject, WKScriptMessageHandlerWithReply {
 
         switch type {
         case "getContext":
-            replyHandler(context, nil)
+            replyHandler(contextProvider(), nil)
 
         case "api.request":
             let method = (payload["method"] as? String ?? "GET").uppercased()
