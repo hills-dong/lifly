@@ -3,15 +3,17 @@ import { tools as toolsApi, dataObjects as doApi, rawInputs, pipelines, files as
 import type { DataObject, Tool, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
 import { captureImages, fileURL, getContext, isNative, setTitle } from './lifly';
+import GrowthView from './GrowthView';
 import './embed.css';
 
-type Kind = 'todo' | 'doc' | 'generic';
+type Kind = 'todo' | 'doc' | 'growth' | 'generic';
 
 function kindOf(tool: Tool | null): Kind {
   if (!tool) return 'generic';
   const s = (tool.name + ' ' + (tool.description ?? '')).toLowerCase();
   if (s.includes('todo') || s.includes('待办')) return 'todo';
   if (s.includes('证件') || s.includes('document') || s.includes('id-doc')) return 'doc';
+  if (s.includes('成长') || s.includes('growth')) return 'growth';
   return 'generic';
 }
 
@@ -53,7 +55,7 @@ export default function EmbedToolView({ toolId }: { toolId: string }) {
 
   const loadItems = useCallback(async () => {
     if (!toolId) return;
-    const list = await doApi.listDataObjects({ tool_id: toolId, status: 'active' });
+    const list = await doApi.listDataObjects({ tool_id: toolId, status: 'active', limit: 200 });
     setItems(Array.isArray(list) ? list : []);
   }, [toolId]);
 
@@ -176,6 +178,16 @@ export default function EmbedToolView({ toolId }: { toolId: string }) {
   };
 
   if (loading) return <div className="embed-state">加载中…</div>;
+
+  if (kind === 'growth') {
+    return (
+      <div className="embed">
+        {!isNative && tool && <h1 className="embed-title">{tool.name}</h1>}
+        {error && <div className="embed-error">{error}</div>}
+        {items.length === 0 ? <div className="embed-state">还没有记录</div> : <GrowthView items={items} />}
+      </div>
+    );
+  }
 
   return (
     <div className="embed">

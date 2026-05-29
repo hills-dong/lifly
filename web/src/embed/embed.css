@@ -201,3 +201,231 @@
   text-align: right;
   word-break: break-all;
 }
+
+/* ── Growth record tool ─────────────────────────────────────────────── */
+.growth {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #1c1c1e;
+}
+
+.growth-summary {
+  display: flex;
+  gap: 8px;
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 14px 12px;
+  margin-bottom: 14px;
+}
+.growth-sum-cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+}
+.growth-sum-val {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+.growth-sum-unit {
+  font-size: 12px;
+  color: #8e8e93;
+}
+.growth-sum-age {
+  font-size: 14px;
+  font-weight: 600;
+}
+.growth-sum-lbl {
+  font-size: 12px;
+  color: #8e8e93;
+  margin-top: 2px;
+}
+
+.growth-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.growth-tabs button {
+  flex: 1;
+  border: none;
+  background: #efeff4;
+  color: #3c3c43;
+  border-radius: 9px;
+  padding: 8px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.growth-tabs button.on {
+  background: #4a85e0;
+  color: #fff;
+}
+
+.growth-sexrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.growth-sex-hint {
+  font-size: 13px;
+  color: #8e8e93;
+}
+.growth-sextoggle {
+  display: inline-flex;
+  border: 1px solid #d1d1d6;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.growth-sextoggle button {
+  border: none;
+  background: #fff;
+  color: #3c3c43;
+  padding: 5px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.growth-sextoggle button.on {
+  background: #4a85e0;
+  color: #fff;
+}
+
+.growth-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+}
+.growth-grid {
+  stroke: #f0f0f2;
+  stroke-width: 1;
+}
+.growth-axis {
+  stroke: #c7c7cc;
+  stroke-width: 1;
+}
+.growth-band-outer {
+  fill: rgba(74, 133, 224, 0.07);
+  stroke: none;
+}
+.growth-band-inner {
+  fill: rgba(74, 133, 224, 0.12);
+  stroke: none;
+}
+.growth-pline {
+  fill: none;
+  stroke: #b9c8e6;
+  stroke-width: 1;
+}
+.growth-pline.p50 {
+  stroke: #4a85e0;
+  stroke-width: 1.3;
+  stroke-dasharray: 4 3;
+}
+.growth-pclabel {
+  fill: #a0a0a5;
+  font-size: 7px;
+}
+.growth-childline {
+  fill: none;
+  stroke: #e8603c;
+  stroke-width: 1.8;
+}
+.growth-dot {
+  fill: #e8603c;
+  stroke: #fff;
+  stroke-width: 0.8;
+}
+.growth-tick {
+  fill: #8e8e93;
+  font-size: 8px;
+}
+.growth-unit {
+  fill: #8e8e93;
+  font-size: 8px;
+}
+.growth-note {
+  font-size: 12px;
+  color: #8e8e93;
+  margin: 8px 2px 0;
+  line-height: 1.5;
+}
+
+.growth-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.growth-row {
+  background: #fff;
+  border: 1px solid #ececef;
+  border-radius: 12px;
+  padding: 12px;
+}
+.growth-row-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.growth-row-date {
+  font-size: 15px;
+  font-weight: 600;
+}
+.growth-row-age {
+  font-size: 12px;
+  color: #8e8e93;
+}
+.growth-row-vals {
+  display: flex;
+  gap: 12px;
+}
+.growth-metric {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.growth-metric-val {
+  font-size: 20px;
+  font-weight: 700;
+}
+.growth-metric-unit {
+  font-size: 12px;
+  color: #8e8e93;
+}
+.growth-metric-lbl {
+  font-size: 12px;
+  color: #8e8e93;
+  margin-left: 2px;
+}
+.growth-chip {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 6px;
+  margin-left: auto;
+  align-self: center;
+}
+.growth-chip.normal {
+  background: #e3f6ea;
+  color: #1a8a4f;
+}
+.growth-chip.low,
+.growth-chip.high {
+  background: #fff1e0;
+  color: #c97a16;
+}
+.growth-chip.vlow,
+.growth-chip.vhigh {
+  background: #fde7e7;
+  color: #c0392b;
+}

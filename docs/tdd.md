@@ -786,7 +786,38 @@ Pipeline 完成 (status: completed)
 WebSocket 推送 pipeline.status → 前端展示提取结果
 ```
 
-### 6.3 数据流通用模式
+### 6.3 成长记录场景（只读展示型工具）
+
+成长记录验证了一类**无 LLM 管道的纯展示型工具**：数据已结构化，工具只负责存储与可视化，不需要 collect/process 步骤。它进一步印证「新增场景不改后端代码」——本工具仅靠一条 seed 迁移 + 一个前端渲染分支即可上线。
+
+```
+seed 迁移 (20260311000005_seed_growth_record.sql)
+    │  注册 Tool「成长记录」(source=system) + ToolVersion v1（无 ToolStep）
+    │  写入 41 条 DataObject（从家长成长记录截图转录，宝宝出生约 2020-03-12）
+    ▼
+data_schema:
+    { date, height_cm, weight_kg, head_circ_cm, age_months, age_label, note }
+    · age_months = (测量日期 − 出生日期)/30.4375，seed 时算好直接入库
+    · 头围全程未记录，省略
+    ▼
+前端（embed，iOS 原生壳与浏览器共用同一 web）
+    · EmbedToolView.kindOf() 按工具名含「成长 / growth」识别为 kind='growth'，
+      短路渲染 GrowthView（无输入框，纯展示）
+    · GrowthView：记录列表 / 身高曲线 / 体重曲线 三页签
+        - 曲线为 SVG，叠加 WHO 百分位带（P3–P97 阴影、P50 中线）
+        - 男 / 女切换（百分位与性别相关，记忆于 localStorage）
+        - 每条记录按 WHO 百分位标注：<P3 过低 / P3–P15 偏低 /
+          P15–P85 正常 / P85–P97 偏高 / >P97 过高
+    ▼
+WHO 百分位参考数据（growthStandards.ts）
+    · 由 WHO Child Growth Standards 的 LMS 表（身高/体重，男/女，0–60 月）
+      经 X = M·(1+L·S·z)^(1/L) 预计算出 P3/P15/P50/P85/P97 曲线
+    · 0–5 岁标准；超过 60 月的测量点（如 5 岁 8 月）落在带子右侧、不做分级
+```
+
+上线方式与其它工具一致：工具列表来自 `GET /api/tools`（iOS `ToolCatalogView` 动态渲染），web UI 由后端提供——**新增工具无需重新发版 App，仅需重建并部署后端**（应用新迁移 + 提供新 web 包）。
+
+### 6.4 数据流通用模式
 
 所有场景遵循相同的执行模式：
 
