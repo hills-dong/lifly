@@ -245,6 +245,51 @@
   margin-top: 2px;
 }
 
+.growth-profile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: #3c3c43;
+}
+.growth-profile-warn {
+  color: #c0392b;
+}
+.growth-profile-edit {
+  border: none;
+  background: none;
+  color: #4a85e0;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.growth-confirm {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+}
+.growth-confirm-yes {
+  border: none;
+  background: #fde7e7;
+  color: #c0392b;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.growth-confirm-no {
+  border: none;
+  background: #efeff4;
+  color: #3c3c43;
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
 .growth-addbar {
   display: flex;
   justify-content: flex-end;

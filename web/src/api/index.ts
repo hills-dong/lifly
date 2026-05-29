@@ -36,6 +36,9 @@ export const tools = {
 
   getTool: (id: string) =>
     client.get<Tool>(`/api/tools/${id}`).then((r) => r.data),
+
+  updateTool: (id: string, data: { config: Record<string, unknown> }) =>
+    client.put<Tool>(`/api/tools/${id}`, data).then((r) => r.data),
 };
 
 // --- Data Objects ---

@@ -31,17 +31,18 @@ function loadSeededRecords(): DataObject[] {
 const records = loadSeededRecords();
 
 describe('WHO_STANDARDS data module', () => {
-  it('covers months 0–60 for both sexes and metrics', () => {
+  it('covers ages 0–18y for both sexes and metrics', () => {
     for (const sex of ['male', 'female'] as const) {
       for (const metric of ['height', 'weight'] as const) {
         const band = WHO_STANDARDS[sex][metric];
         expect(band[0].m).toBe(0);
-        expect(band[band.length - 1].m).toBe(60);
-        expect(band.length).toBe(61);
-        // percentiles are ordered p3 < p50 < p97 at every age
-        for (const b of band) {
-          expect(b.p3).toBeLessThan(b.p50);
-          expect(b.p50).toBeLessThan(b.p97);
+        expect(band[band.length - 1].m).toBe(216); // 18 years
+        expect(band.length).toBeGreaterThan(60);
+        // months strictly increasing; percentiles ordered p3 < p50 < p97
+        for (let i = 0; i < band.length; i++) {
+          if (i > 0) expect(band[i].m).toBeGreaterThan(band[i - 1].m);
+          expect(band[i].p3).toBeLessThan(band[i].p50);
+          expect(band[i].p50).toBeLessThan(band[i].p97);
         }
       }
     }
@@ -54,16 +55,18 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('shows the latest measurement in the summary', () => {
-    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     const summary = document.querySelector('.growth-summary') as HTMLElement;
     expect(summary).toBeTruthy();
     expect(within(summary).getByText('115')).toBeInTheDocument();
     expect(within(summary).getByText('17')).toBeInTheDocument();
-    expect(within(summary).getByText('5岁8月6天')).toBeInTheDocument();
+    // Age label is computed from the profile birth date (2020-03-12 → 2025-11-19).
+    expect(within(summary).getByText('5岁8月7天')).toBeInTheDocument();
+    expect(within(summary).getByText('2025-11-19')).toBeInTheDocument();
   });
 
   it('renders every record as a list row, newest first', () => {
-    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     const rows = document.querySelectorAll('.growth-row');
     expect(rows.length).toBe(41);
     // First row is the newest date.
@@ -73,7 +76,7 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('shows an em-dash for a record missing height', () => {
-    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     // 2022-03-22 has only weight (10.8), no height.
     const rows = Array.from(document.querySelectorAll('.growth-row')) as HTMLElement[];
     const row = rows.find((r) => within(r).queryByText('2022-03-22'));
@@ -83,14 +86,14 @@ describe('GrowthView with seeded records', () => {
   });
 
   it('classifies measurements against WHO bands (chips render)', () => {
-    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     // At least some normal/low chips should appear given this child trends low.
     expect(document.querySelectorAll('.growth-chip').length).toBeGreaterThan(0);
   });
 
   it('renders the height curve with percentile bands and the child line', async () => {
     const user = userEvent.setup();
-    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     await user.click(screen.getByRole('button', { name: '身高曲线' }));
 
     const svg = document.querySelector('svg.growth-chart');
@@ -104,17 +107,32 @@ describe('GrowthView with seeded records', () => {
     expect(svg!.querySelectorAll('.growth-dot').length).toBe(heightCount);
   });
 
-  it('switches to the weight curve and honors the sex toggle', async () => {
+  it('switches to the weight curve with a dot per weight measurement', async () => {
     const user = userEvent.setup();
-    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" onChanged={() => {}} />);
+    render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     await user.click(screen.getByRole('button', { name: '体重曲线' }));
-    expect(document.querySelector('svg.growth-chart')).toBeTruthy();
-
-    // Toggle to girl — chart should still render.
-    await user.click(screen.getByRole('button', { name: '女孩' }));
     const svg = document.querySelector('svg.growth-chart');
     expect(svg).toBeTruthy();
     const weightCount = records.filter((r) => r.attributes.weight_kg != null).length;
     expect(svg!.querySelectorAll('.growth-dot').length).toBe(weightCount);
+  });
+
+  it('edits the child profile (birth date + sex)', async () => {
+    const user = userEvent.setup();
+    const saved: { birth_date: string; sex: string }[] = [];
+    render(
+      <GrowthView
+        items={records}
+        toolId="00000000-0000-0000-0000-000000000203"
+        birthDate="2020-03-12"
+        sex="male"
+        onChanged={() => {}}
+        onSaveProfile={async (p) => { saved.push(p); }}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: '编辑' }));
+    await user.click(screen.getByRole('button', { name: '女孩' }));
+    await user.click(screen.getByRole('button', { name: '保存档案' }));
+    expect(saved).toEqual([{ birth_date: '2020-03-12', sex: 'female' }]);
   });
 });

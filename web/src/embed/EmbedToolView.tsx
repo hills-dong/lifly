@@ -70,6 +70,17 @@ export default function EmbedToolView({ toolId }: { toolId: string }) {
         if (isNative) {
           const ctx = await getContext();
           t = { id: toolId, name: ctx.toolName ?? '', description: ctx.toolDescription ?? '' } as Tool;
+          // The growth tool needs its config (child birth date/sex), which the
+          // bridge context doesn't carry — fetch it.
+          const g = (t.name + ' ' + (t.description ?? '')).toLowerCase();
+          if (g.includes('成长') || g.includes('growth')) {
+            try {
+              const full = await toolsApi.getTool(toolId);
+              t = { ...t, config: full.config };
+            } catch {
+              /* keep base context */
+            }
+          }
         } else {
           t = await toolsApi.getTool(toolId);
         }
@@ -177,14 +188,27 @@ export default function EmbedToolView({ toolId }: { toolId: string }) {
     }
   };
 
+  const saveProfile = async (p: { birth_date: string; sex: 'male' | 'female' }) => {
+    const updated = await toolsApi.updateTool(toolId, { config: p });
+    setTool((prev) => (prev ? { ...prev, config: updated.config } : prev));
+  };
+
   if (loading) return <div className="embed-state">加载中…</div>;
 
   if (kind === 'growth') {
+    const cfg = (tool?.config ?? {}) as { birth_date?: string; sex?: string };
     return (
       <div className="embed">
         {!isNative && tool && <h1 className="embed-title">{tool.name}</h1>}
         {error && <div className="embed-error">{error}</div>}
-        <GrowthView items={items} toolId={toolId} onChanged={loadItems} />
+        <GrowthView
+          items={items}
+          toolId={toolId}
+          birthDate={cfg.birth_date}
+          sex={cfg.sex === 'female' ? 'female' : 'male'}
+          onChanged={loadItems}
+          onSaveProfile={saveProfile}
+        />
       </div>
     );
   }

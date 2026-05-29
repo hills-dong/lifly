@@ -1,5 +1,5 @@
 use axum::extract::{Json, Path, Query, State};
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::Router;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -39,6 +39,27 @@ async fn get_tool_handler(
     check_ownership(tool.user_id, auth.user_id, "tool", id)?;
 
     Ok(ApiResponse::success(ToolDetailResponse::from(tool)))
+}
+
+/// PUT /api/tools/:id — update a tool's `config` (e.g. the 成长记录 child profile).
+#[derive(Deserialize)]
+struct UpdateToolConfigRequest {
+    config: serde_json::Value,
+}
+
+async fn update_tool_handler(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(body): Json<UpdateToolConfigRequest>,
+) -> AppResult<ApiResponse<ToolDetailResponse>> {
+    let tool = repo::find_tool_by_id(&state.pool, id)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("tool {id} not found")))?;
+    check_ownership(tool.user_id, auth.user_id, "tool", id)?;
+
+    let updated = repo::update_tool_config(&state.pool, id, &body.config).await?;
+    Ok(ApiResponse::success(ToolDetailResponse::from(updated)))
 }
 
 // ── Version handlers ───────────────────────────────────────────────────────
@@ -255,7 +276,7 @@ async fn get_pipeline_handler(
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/api/tools", get(list_tools_handler))
-        .route("/api/tools/{id}", get(get_tool_handler))
+        .route("/api/tools/{id}", get(get_tool_handler).put(update_tool_handler))
         .route("/api/tools/{id}/versions", get(list_versions_handler))
         .route(
             "/api/tools/{id}/versions/{vid}",

@@ -11,7 +11,7 @@ use super::models::{
 pub async fn list_tools(pool: &PgPool, user_id: Uuid) -> Result<Vec<Tool>, sqlx::Error> {
     sqlx::query_as::<_, Tool>(
         "SELECT id, user_id, name, description, source, status,
-                data_schema, trigger_config, current_version_id,
+                data_schema, trigger_config, config, current_version_id,
                 created_at, updated_at
          FROM tools
          WHERE user_id = $1
@@ -26,13 +26,32 @@ pub async fn list_tools(pool: &PgPool, user_id: Uuid) -> Result<Vec<Tool>, sqlx:
 pub async fn find_tool_by_id(pool: &PgPool, id: Uuid) -> Result<Option<Tool>, sqlx::Error> {
     sqlx::query_as::<_, Tool>(
         "SELECT id, user_id, name, description, source, status,
-                data_schema, trigger_config, current_version_id,
+                data_schema, trigger_config, config, current_version_id,
                 created_at, updated_at
          FROM tools
          WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(pool)
+    .await
+}
+
+/// Update a tool's `config` JSON and return the updated row.
+pub async fn update_tool_config(
+    pool: &PgPool,
+    id: Uuid,
+    config: &serde_json::Value,
+) -> Result<Tool, sqlx::Error> {
+    sqlx::query_as::<_, Tool>(
+        "UPDATE tools SET config = $2, updated_at = NOW()
+         WHERE id = $1
+         RETURNING id, user_id, name, description, source, status,
+                   data_schema, trigger_config, config, current_version_id,
+                   created_at, updated_at",
+    )
+    .bind(id)
+    .bind(config)
+    .fetch_one(pool)
     .await
 }
 

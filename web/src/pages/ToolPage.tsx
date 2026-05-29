@@ -11,6 +11,7 @@ export default function ToolPage() {
   const [objects, setObjects] = useState<DataObject[]>([]);
   const [statusFilter, setStatusFilter] = useState('');
   const [thumbnails, setThumbnails] = useState<Record<string, FileStorage | null>>({});
+  const [profileOverride, setProfileOverride] = useState<{ birth_date?: string; sex?: string } | null>(null);
 
   const { data: tool, loading: toolLoading, error: toolError } = useFetchData<Tool>(
     () => (id ? toolsApi.getTool(id) : Promise.reject(new Error('No tool ID'))),
@@ -85,6 +86,7 @@ export default function ToolPage() {
   const isTodo = nameLower.includes('todo');
   const isDoc = nameLower.includes('证件') || nameLower.includes('document') || nameLower.includes('id-doc');
   const isGrowth = nameLower.includes('成长') || nameLower.includes('growth');
+  const profile = profileOverride ?? ((tool.config ?? {}) as { birth_date?: string; sex?: string });
 
   return (
     <div>
@@ -109,7 +111,17 @@ export default function ToolPage() {
       </div>
 
       {isGrowth ? (
-        <GrowthView items={objects} toolId={id!} onChanged={reloadObjects} />
+        <GrowthView
+          items={objects}
+          toolId={id!}
+          birthDate={profile.birth_date}
+          sex={profile.sex === 'female' ? 'female' : 'male'}
+          onChanged={reloadObjects}
+          onSaveProfile={async (p) => {
+            const u = await toolsApi.updateTool(id!, { config: p });
+            setProfileOverride((u.config ?? {}) as { birth_date?: string; sex?: string });
+          }}
+        />
       ) : (
       <>
       <div className="filter-bar">
