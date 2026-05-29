@@ -65,6 +65,17 @@ final class ToolAssetCache: NSObject, WKURLSchemeHandler {
             return
         }
 
+        // SPA HTML: stale-while-revalidate — serve cache instantly, refresh in the
+        // background so a new web deploy is picked up on the next open.
+        let isHTML = !isApi && !path.contains("/assets/")
+        if isHTML,
+           let data = try? Data(contentsOf: dataFile),
+           let mime = try? String(contentsOf: ctFile, encoding: .utf8) {
+            respond(urlSchemeTask, id: id, requestURL: requestURL, data: data, mime: mime)
+            revalidate(realURL, dataFile: dataFile, ctFile: ctFile)
+            return
+        }
+
         var request = URLRequest(url: realURL)
         // API resources need auth; inject the bearer token natively so the JWT
         // is never exposed to in-WebView JavaScript (e.g. <img src="/api/files/...">).
@@ -96,6 +107,19 @@ final class ToolAssetCache: NSObject, WKURLSchemeHandler {
     }
 
     // MARK: Helpers
+
+    /// Fetch fresh content in the background and update the cache (no task reply).
+    private func revalidate(_ url: URL, dataFile: URL, ctFile: URL) {
+        session.dataTask(with: url) { [weak self] data, response, _ in
+            guard let self,
+                  let data,
+                  let http = response as? HTTPURLResponse,
+                  (200..<300).contains(http.statusCode) else { return }
+            let mime = http.mimeType ?? self.mimeType(for: url)
+            try? data.write(to: dataFile, options: .atomic)
+            try? mime.write(to: ctFile, atomically: true, encoding: .utf8)
+        }.resume()
+    }
 
     private func mapToReal(_ url: URL) -> URL? {
         guard var comps = URLComponents(string: AppConfig.webBaseURL),

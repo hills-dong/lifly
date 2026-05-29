@@ -21,6 +21,8 @@ export interface NativeBridge {
 
 export interface BridgeContext {
   toolId?: string;
+  toolName?: string;
+  toolDescription?: string;
   userId?: string;
   platform: string;
   appVersion?: string;
@@ -37,6 +39,12 @@ export const nativeBridge: NativeBridge | null =
   typeof window !== 'undefined' && window.lifly?.isNative ? window.lifly : null;
 
 export const isNative = !!nativeBridge;
+
+/** Native shell context (tool id/name, platform). Empty-ish in a browser. */
+export async function getContext(): Promise<BridgeContext> {
+  if (nativeBridge) return nativeBridge.getContext();
+  return { platform: 'web' };
+}
 
 /**
  * URL for an authenticated file (image) usable in <img src>. In the native shell

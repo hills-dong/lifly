@@ -6,6 +6,7 @@ struct ToolHostScreen: View {
     let tool: Tool
     @Environment(\.dismiss) private var dismiss
     @State private var title: String
+    @State private var isLoading = true
 
     init(tool: Tool) {
         self.tool = tool
@@ -13,16 +14,25 @@ struct ToolHostScreen: View {
     }
 
     var body: some View {
-        ToolWebView(tool: tool, title: $title, onClose: { dismiss() })
-            .ignoresSafeArea(.container, edges: .bottom)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
+        ZStack {
+            ToolWebView(tool: tool, title: $title, isLoading: $isLoading, onClose: { dismiss() })
+                .ignoresSafeArea(.container, edges: .bottom)
+            if isLoading {
+                ProgressView()
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
 private struct ToolWebView: UIViewRepresentable {
     let tool: Tool
     @Binding var title: String
+    @Binding var isLoading: Bool
     let onClose: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -40,9 +50,10 @@ private struct ToolWebView: UIViewRepresentable {
 
         let config = WKWebViewConfiguration()
         config.userContentController = controller
-        config.setURLSchemeHandler(context.coordinator.assetCache, forURLScheme: ToolAssetCache.scheme)
+        config.setURLSchemeHandler(WebRuntime.shared.assetCache, forURLScheme: ToolAssetCache.scheme)
 
         let webView = WKWebView(frame: .zero, configuration: config)
+        webView.navigationDelegate = context.coordinator
         webView.allowsBackForwardNavigationGestures = false
         webView.scrollView.contentInsetAdjustmentBehavior = .always
         context.coordinator.webView = webView
@@ -62,23 +73,27 @@ private struct ToolWebView: UIViewRepresentable {
         webView.stopLoading()
     }
 
-    final class Coordinator {
+    final class Coordinator: NSObject, WKNavigationDelegate {
         let bridge: LiflyBridge
         let toolURL: URL?
         let media = MediaCapture()
-        let assetCache = ToolAssetCache()
+        let setLoading: (Bool) -> Void
         weak var webView: WKWebView?
 
         init(_ parent: ToolWebView) {
             let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
             let context: [String: Any] = [
                 "toolId": parent.tool.id,
+                "toolName": parent.tool.name,
+                "toolDescription": parent.tool.description ?? "",
                 "platform": "ios",
                 "appVersion": appVersion,
                 "locale": Locale.current.identifier,
             ]
             bridge = LiflyBridge(context: context)
             toolURL = ToolAssetCache.entryURL(toolId: parent.tool.id)
+            setLoading = { parent.isLoading = $0 }
+            super.init()
 
             bridge.onSetTitle = { newTitle in
                 if !newTitle.isEmpty { parent.title = newTitle }
@@ -88,6 +103,18 @@ private struct ToolWebView: UIViewRepresentable {
             let media = self.media
             bridge.onScanDocument = { await media.scanDocument() }
             bridge.onPickPhotos = { max in await media.pickPhotos(max: max) }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            setLoading(false)
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            setLoading(false)
+        }
+
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+            setLoading(false)
         }
     }
 }

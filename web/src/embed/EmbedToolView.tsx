@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { tools as toolsApi, dataObjects as doApi, rawInputs, pipelines, files as filesApi } from '../api';
 import type { DataObject, Tool, FileStorage } from '../api/types';
 import { displayTitle } from '../utils/displayTitle';
-import { captureImages, fileURL, isNative, setTitle } from './lifly';
+import { captureImages, fileURL, getContext, isNative, setTitle } from './lifly';
 import './embed.css';
 
 type Kind = 'todo' | 'doc' | 'generic';
@@ -62,14 +62,27 @@ export default function EmbedToolView() {
   useEffect(() => {
     if (!toolId) return;
     setLoading(true);
-    Promise.all([toolsApi.getTool(toolId), loadItems()])
-      .then(([t]) => {
+    (async () => {
+      try {
+        // In the native shell, the tool name/description come from the bridge
+        // context (no network) so we skip the getTool round-trip.
+        let t: Tool;
+        if (isNative) {
+          const ctx = await getContext();
+          t = { id: toolId, name: ctx.toolName ?? '', description: ctx.toolDescription ?? '' } as Tool;
+        } else {
+          t = await toolsApi.getTool(toolId);
+        }
         setTool(t);
         setTitle(t.name);
+        await loadItems();
         setError('');
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [toolId, loadItems]);
 
   // Load document thumbnails for the doc tool.

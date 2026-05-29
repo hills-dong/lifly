@@ -35,7 +35,10 @@ struct ToolCatalogView: View {
                 ToolHostScreen(tool: tool)
             }
             .refreshable { await registry.load() }
-            .task { if !registry.isLoaded { await registry.load() } }
+            .task {
+                WebRuntime.shared.prewarmIfNeeded()
+                if !registry.isLoaded { await registry.load() }
+            }
         }
     }
 }
