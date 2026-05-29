@@ -7,8 +7,8 @@ enum AppConfig {
     private static let baseURLKey = "lifly.baseURL"
     private static let webBaseURLKey = "lifly.webBaseURL"
 
-    /// Sensible default for a locally running docker-compose backend.
-    static let defaultBaseURL = "http://localhost:9527"
+    /// Public self-hosted backend (Cloudflare HTTPS). Editable on the login screen.
+    static let defaultBaseURL = "https://lifly.klib.cn"
 
     /// API base URL (backend). All REST calls go here.
     static var baseURL: String {
