@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod capability;
 pub mod common;
 pub mod data;

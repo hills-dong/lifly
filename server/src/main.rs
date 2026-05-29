@@ -1,3 +1,4 @@
+mod admin;
 mod capability;
 mod common;
 mod data;
@@ -23,6 +24,10 @@ fn static_files_path() -> String {
     std::env::var("STATIC_DIR")
         .or_else(|_| std::env::var("static_dir"))
         .unwrap_or_else(|_| "./static".to_string())
+}
+
+fn admin_static_path() -> String {
+    std::env::var("ADMIN_STATIC_DIR").unwrap_or_else(|_| "./admin-static".to_string())
 }
 
 #[tokio::main]
@@ -75,7 +80,23 @@ async fn main() {
         .merge(data::routes())
         .merge(data::category_routes())
         .merge(intelligence::routes())
+        .merge(admin::routes())
         .route("/api/ws", get(common::ws::ws_handler));
+
+    // Serve the standalone admin SPA under `/admin` if its build is present
+    // (built with base `/admin/`). Registered before the web fallback; API
+    // routes under `/api/admin/*` are unaffected since they don't start with
+    // the `/admin` path segment used here.
+    let admin_dir = admin_static_path();
+    if Path::new(&admin_dir).is_dir() {
+        let admin_index = format!("{admin_dir}/index.html");
+        app = app.nest_service(
+            "/admin",
+            tower_http::services::ServeDir::new(&admin_dir)
+                .fallback(tower_http::services::ServeFile::new(admin_index)),
+        );
+        tracing::info!("Serving admin panel from {admin_dir} at /admin");
+    }
 
     // Serve static files from STATIC_FILES_PATH if the directory exists.
     let static_dir = static_files_path();

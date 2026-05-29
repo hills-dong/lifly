@@ -1,0 +1,15 @@
+# Dependencies and build artifacts — rebuilt inside the image
+**/node_modules
+**/target
+**/dist
+
+# VCS and local-only
+.git
+.gitignore
+.codegraph
+**/*.log
+
+# Test/report output not needed in the image
+docs/reports
+**/playwright-report
+**/test-results

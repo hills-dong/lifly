@@ -90,6 +90,11 @@ src/
 │   ├── service.rs
 │   ├── repo.rs
 │   └── models.rs
+├── admin/              # 后台管理（配置式鉴权 + 注册表驱动通用 CRUD）
+│   ├── handlers.rs     # 通用 CRUD + 登录 + 元数据
+│   ├── auth.rs         # AdminClaims / AdminUser / 登录校验
+│   ├── registry.rs     # 14 张表的资源注册表
+│   └── repo.rs         # 通用动态 SQL
 ├── common/
 │   ├── error.rs         # 统一错误处理
 │   ├── response.rs      # 统一响应格式
@@ -634,6 +639,23 @@ DataObject 由 Pipeline 自动产出，不提供手动创建 API。
 | DELETE | `/api/reminders/{id}` | 删除提醒 |
 | POST | `/api/reminders/{id}/dismiss` | 关闭提醒 |
 
+#### Admin（后台管理）
+
+独立运维后台，配置式凭据鉴权（`ADMIN_USERNAME`/`ADMIN_PASSWORD`，与用户体系隔离），签发独立的 admin JWT（`scope=admin`）。数据端点由注册表驱动的通用 CRUD 提供（详见 5.3）。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/admin/login` | 后台登录（配置凭据），返回 admin token |
+| GET | `/api/admin/me` | 当前 admin 身份 |
+| GET | `/api/admin/meta` | 资源元数据（表名、列、类型、只读/隐藏标记） |
+| GET | `/api/admin/data/{resource}` | 列表（分页/排序/等值过滤） |
+| POST | `/api/admin/data/{resource}` | 新建一行 |
+| GET | `/api/admin/data/{resource}/{id}` | 获取单行 |
+| PUT | `/api/admin/data/{resource}/{id}` | 更新一行 |
+| DELETE | `/api/admin/data/{resource}/{id}` | 删除一行 |
+
+`{resource}` 为注册表中的表名（如 `users`、`tools`、`pipelines`）。列表查询：`?page=1&per_page=20&sort=created_at&order=desc&<列名>=<值>`，响应 `data` 为 `{items:[...], total, page, per_page}`。
+
 #### WebSocket
 
 | 端点 | 说明 |
@@ -655,6 +677,23 @@ DataObject 由 Pipeline 自动产出，不提供手动创建 API。
 |------|------|------|
 | POST | `/api/files/upload` | 上传文件（multipart/form-data） |
 | GET | `/api/files/{id}` | 下载/预览文件 |
+
+### 5.3 后台管理（Admin）设计
+
+后台管理面向运维，目标是对 DB 14 张表做通用 CRUD（类 Django Admin）。选型：后端 Axum 通用层 + 前端独立 Refine 工程（`admin/`，与 `web/` 平级）。
+
+**鉴权（配置式）**
+- 不改 `users` 表；管理员凭据来自环境变量 `ADMIN_USERNAME`/`ADMIN_PASSWORD`（dev 默认 `admin`/`admin123`）。
+- 登录校验通过后签发独立 admin JWT：`AdminClaims { sub=用户名, scope="admin", iat, exp }`，复用 `JWT_SECRET`。
+- `AdminUser` 提取器校验 `scope=="admin"`；普通用户 token（`sub` 为 UUID、无 `scope`）无法通过，实现体系隔离。
+
+**注册表驱动的通用 CRUD（关键设计）**
+- 不为 14 张表各写一套 handler，而是建立静态注册表 `ResourceSpec { table, pk, columns[] }`，每列声明 `{ name, col_type, readonly, hidden }`。
+- 通用 handler/repo 仅从注册表取表名与列名拼 SQL（**表名/列名永不来自用户输入**），用户输入只作为参数值绑定；值统一以文本绑定并在 SQL 中按列类型 `::uuid / ::int / ::jsonb / ::timestamptz` 等强转，规避 sqlx 运行时绑定的静态类型限制。
+- 安全约束：①过滤/排序字段必须命中注册表列白名单；②`hidden` 列不进入 select 输出（如 `users.password_hash`、`data_objects.vector_embedding`——后者是 `vector(1536)`，强制排除以免序列化爆量）；③`readonly` 列（`id` / `created_at` 等）不可写入。
+- 列表以 `row_to_json` 返回，免去逐表 DTO；前端凭 `/api/admin/meta` 动态渲染表格与表单。
+
+> ⚠️ admin 通用 CRUD **直写 DB、绕过业务校验**（所有权、软删除、pipeline 编排），仅供运维，必须严格限制访问。
 
 ---
 
@@ -935,18 +974,35 @@ volumes:
 
 ### 9.2 server Dockerfile
 
+四阶段构建：Rust 后端 + 两个前端（web 主站、admin 运维后台）+ debian-slim 运行时。运行时单容器同时托管二进制、web（`/`）与 admin（`/admin`）。
+
 ```dockerfile
-# 构建阶段
+# 后端构建
 FROM rust:1.94 AS backend
 WORKDIR /app
-COPY . .
+COPY server/ ./server/
+WORKDIR /app/server
+ENV SQLX_OFFLINE=true
 RUN cargo build --release
 
-# 前端构建
-FROM node:20 AS frontend
+# 主站前端（served at /）
+FROM node:22 AS frontend
 WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml* ./
+RUN pnpm install --frozen-lockfile || pnpm install
 COPY web/ .
-RUN corepack enable && pnpm install && pnpm build
+RUN pnpm build
+
+# 运维后台前端（served under /admin，以 base=/admin/ 构建）
+FROM node:22 AS admin
+WORKDIR /app
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
+COPY admin/package.json admin/pnpm-lock.yaml* admin/pnpm-workspace.yaml* ./
+RUN pnpm install --frozen-lockfile || pnpm install
+COPY admin/ .
+ENV VITE_BASE=/admin/
+RUN pnpm build
 
 # 运行阶段
 FROM debian:bookworm-slim
@@ -954,10 +1010,17 @@ RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/
 COPY --from=backend /app/server/target/release/lifly-server /usr/local/bin/
 COPY --from=backend /app/server/migrations /srv/migrations
 COPY --from=frontend /app/dist /srv/web
+COPY --from=admin /app/dist /srv/admin
 ENV STATIC_DIR=/srv/web
+ENV ADMIN_STATIC_DIR=/srv/admin
 EXPOSE 8080
 CMD ["lifly-server"]
 ```
+
+> 构建注意（踩坑记录）：
+> - **必须有 `.dockerignore`** 排除 `**/target`、`**/node_modules`、`**/dist`，否则 `server/target`（GB 级）会进入构建上下文。
+> - **前端阶段用 `node:22` 且把 pnpm 钉到 `9.x`**。pnpm 10 的默认供应链策略（`minimum-release-age` 拒绝新发布的依赖、对未审批构建脚本硬失败 `ERR_PNPM_IGNORED_BUILDS`）会让"从已提交 lockfile 的非交互构建"失败；pnpm 9 默认运行构建脚本、无此门槛。
+> - admin SPA 用 `base=/admin/` 构建（资源引用 `/admin/assets/...`），后端用 `nest_service("/admin", …)` 托管并对深链回退 `index.html`；前端 `BrowserRouter` 的 `basename` 取自 `import.meta.env.BASE_URL`。API 仍在根 `/api/...`。
 
 ### 9.3 一键部署
 
@@ -970,7 +1033,9 @@ cp .env.example .env   # 填入 LLM_API_KEY
 docker-compose up -d
 ```
 
-浏览器访问 `http://localhost:9527` 即可使用。默认管理员：admin / admin123。
+浏览器访问 `http://localhost:9527` 即可使用业务前端。默认管理员：admin / admin123。
+
+运维后台访问 `http://localhost:9527/admin`，凭据来自 `ADMIN_USERNAME` / `ADMIN_PASSWORD`（compose 默认 admin / admin123，生产务必覆盖）。
 
 ---
 
@@ -991,3 +1056,5 @@ docker-compose up -d
 | 0.1 | 2026-03-09 | 初始版本 |
 | 0.2 | 2026-03-10 | M1 完成，更新测试策略和部署方案 |
 | 0.3 | 2026-03-11 | 修正 Gemini 模型名（加 `-preview` 后缀）；补充 LLM 响应解析机制（markdown 围栏剥离、数组展开）；补充 input_mapping 点路径规则；补充 WebSocket 事件 pipeline_id 过滤要求；补充 `on_failure=skip` 的测试注意事项；更新测试计数（42→68） |
+| 0.4 | 2026-05-29 | 新增运维后台（Admin）：配置式独立凭据鉴权 + 注册表驱动的 14 表通用 CRUD（5.2 端点、5.3 设计）；模块划分新增 `admin/`；前端独立 Refine 工程 `admin/` |
+| 0.5 | 2026-05-29 | Admin 纳入 Docker 部署：后端在 `/admin` 路径托管 admin SPA（`ADMIN_STATIC_DIR`）；Dockerfile 增加 admin 构建阶段（base=/admin/），新增 `.dockerignore`；前端阶段升级 `node:22` 并将 pnpm 钉到 `9.x` 以规避 pnpm 10 供应链门槛（详见 9.2 踩坑记录）；compose 透传 `ADMIN_USERNAME`/`ADMIN_PASSWORD` |

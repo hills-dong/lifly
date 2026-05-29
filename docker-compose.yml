@@ -9,6 +9,9 @@ services:
       - LLM_API_KEY=${LLM_API_KEY}
       - LLM_API_URL=${LLM_API_URL:-https://generativelanguage.googleapis.com}
       - JWT_SECRET=${JWT_SECRET:-default-dev-secret-change-in-production}
+      # Ops admin panel credentials (served at /admin). Override in production.
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
     volumes:
       - ${LIFLY_DATA_DIR:-~/docker/lifly}/files:/data/files
     depends_on:

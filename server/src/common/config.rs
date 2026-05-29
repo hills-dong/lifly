@@ -28,6 +28,17 @@ pub struct AppConfig {
 
     /// Port the HTTP server listens on.
     pub server_port: u16,
+
+    /// Username required to log into the operations admin panel.
+    ///
+    /// Config-based and independent of the `users` table. Defaults to `admin`.
+    pub admin_username: String,
+
+    /// Password required to log into the operations admin panel.
+    ///
+    /// Config-based and independent of the `users` table. Defaults to `admin123`.
+    /// Production deployments MUST override this via the `ADMIN_PASSWORD` env var.
+    pub admin_password: String,
 }
 
 impl AppConfig {
@@ -56,6 +67,8 @@ impl AppConfig {
                 .unwrap_or_else(|_| "8080".to_string())
                 .parse()
                 .expect("SERVER_PORT must be a valid u16"),
+            admin_username: env::var("ADMIN_USERNAME").unwrap_or_else(|_| "admin".to_string()),
+            admin_password: env::var("ADMIN_PASSWORD").unwrap_or_else(|_| "admin123".to_string()),
         }
     }
 

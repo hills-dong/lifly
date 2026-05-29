@@ -7,7 +7,10 @@ pub mod response;
 pub mod state;
 pub mod ws;
 
-pub use auth::{AuthUser, JwtSecret, create_token, verify_token};
+pub use auth::{
+    AdminUser, AuthUser, JwtSecret, create_admin_token, create_token, verify_admin_token,
+    verify_token,
+};
 pub use config::AppConfig;
 pub use error::{AppError, AppResult};
 pub use file_utils::save_file_to_storage;

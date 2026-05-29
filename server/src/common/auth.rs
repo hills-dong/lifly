@@ -144,6 +144,102 @@ where
 #[derive(Debug, Clone)]
 pub struct JwtSecret(pub String);
 
+// ── Admin panel auth ──────────────────────────────────────────────────────────
+//
+// The operations admin panel uses config-based credentials that are completely
+// independent of the `users` table. Its tokens are deliberately NOT interchangeable
+// with user tokens: an `AdminClaims` carries `scope: "admin"` and a string `sub`
+// (the admin username, not a user UUID). A user token (UUID `sub`, no `scope`) fails
+// to decode as `AdminClaims`, and an admin token (`sub = "admin"`) fails to decode
+// as user `Claims` because the UUID parse rejects it.
+
+/// Scope marker embedded in every admin token.
+const ADMIN_SCOPE: &str = "admin";
+
+/// Claims embedded in admin-panel JWTs.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AdminClaims {
+    /// Subject — the admin username (from config), not a user UUID.
+    pub sub: String,
+    /// Token scope; always `"admin"` for admin tokens.
+    pub scope: String,
+    /// Issued-at (epoch seconds).
+    pub iat: i64,
+    /// Expiration (epoch seconds).
+    pub exp: i64,
+}
+
+/// Create a signed admin JWT for the given `username`.
+pub fn create_admin_token(username: &str, secret: &str) -> Result<String, AppError> {
+    let now = Utc::now();
+    let claims = AdminClaims {
+        sub: username.to_string(),
+        scope: ADMIN_SCOPE.to_string(),
+        iat: now.timestamp(),
+        exp: (now + Duration::days(TOKEN_DURATION_DAYS)).timestamp(),
+    };
+
+    jsonwebtoken::encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+    .map_err(|e| AppError::Internal(format!("failed to create admin token: {e}")))
+}
+
+/// Verify an admin JWT and return its claims, rejecting non-admin scopes.
+pub fn verify_admin_token(token: &str, secret: &str) -> Result<AdminClaims, AppError> {
+    let claims = jsonwebtoken::decode::<AdminClaims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    )
+    .map(|data| data.claims)
+    .map_err(|e| AppError::Unauthorized(format!("invalid admin token: {e}")))?;
+
+    if claims.scope != ADMIN_SCOPE {
+        return Err(AppError::Unauthorized("not an admin token".into()));
+    }
+
+    Ok(claims)
+}
+
+/// Authenticated admin extracted from the `Authorization: Bearer <token>` header.
+///
+/// Use this as a handler parameter to require admin privileges.
+#[derive(Debug, Clone)]
+pub struct AdminUser {
+    pub username: String,
+}
+
+impl<S> FromRequestParts<S> for AdminUser
+where
+    S: Send + Sync,
+{
+    type Rejection = AppError;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let secret = parts
+            .extensions
+            .get::<JwtSecret>()
+            .map(|s| s.0.clone())
+            .ok_or_else(|| AppError::Internal("JWT secret not configured".to_string()))?;
+
+        let token = parts
+            .headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|h| h.strip_prefix("Bearer "))
+            .ok_or_else(|| AppError::Unauthorized("missing admin authorization".into()))?;
+
+        let claims = verify_admin_token(token, &secret)?;
+
+        Ok(AdminUser {
+            username: claims.sub,
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,5 +313,34 @@ mod tests {
         let claims2 = verify_token(&token2, TEST_SECRET).expect("verify2");
         assert_eq!(claims1.sub, user1);
         assert_eq!(claims2.sub, user2);
+    }
+
+    #[test]
+    fn admin_token_roundtrip_carries_scope() {
+        let token = create_admin_token("admin", TEST_SECRET).expect("should create admin token");
+        let claims = verify_admin_token(&token, TEST_SECRET).expect("should verify admin token");
+        assert_eq!(claims.sub, "admin");
+        assert_eq!(claims.scope, "admin");
+    }
+
+    #[test]
+    fn user_token_is_rejected_as_admin() {
+        // A normal user token (UUID sub, no scope) must not pass admin verification.
+        let token = create_token(Uuid::new_v4(), TEST_SECRET).expect("user token");
+        assert!(verify_admin_token(&token, TEST_SECRET).is_err());
+    }
+
+    #[test]
+    fn admin_token_is_rejected_as_user() {
+        // An admin token (string sub) must not pass user verification — the UUID
+        // `sub` parse fails.
+        let token = create_admin_token("admin", TEST_SECRET).expect("admin token");
+        assert!(verify_token(&token, TEST_SECRET).is_err());
+    }
+
+    #[test]
+    fn admin_token_with_wrong_secret_fails() {
+        let token = create_admin_token("admin", TEST_SECRET).expect("admin token");
+        assert!(verify_admin_token(&token, "wrong-secret").is_err());
     }
 }

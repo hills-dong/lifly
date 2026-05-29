@@ -1,0 +1,7 @@
+# `packages` is required by pnpm 9 (used in the Docker build); the root is the
+# only package here. `ignoredBuiltDependencies` is honored by pnpm 10 (local dev)
+# to acknowledge esbuild's skippable install script and avoid ERR_PNPM_IGNORED_BUILDS.
+packages:
+  - .
+ignoredBuiltDependencies:
+  - esbuild
