@@ -240,6 +240,7 @@ export default function GrowthView({
   // Records store only date/height/weight; age & label are computed here.
   const rows: Row[] = useMemo(() => {
     return items
+      .filter((o) => o.status !== 'deleted')
       .map((o) => {
         const date = str(o, 'date');
         const dateMs = date ? Date.parse(date) : NaN;
@@ -345,6 +346,7 @@ export default function GrowthView({
 
   return (
     <div className="growth">
+      {formErr && <div className="growth-formerr">{formErr}</div>}
       {/* Child profile (birth date + sex), stored in the tool config. */}
       <div className="growth-profile">
         {hasProfile ? (
@@ -416,7 +418,6 @@ export default function GrowthView({
       </div>
       {adding && (
         <div className="growth-form">
-          {formErr && <div className="growth-formerr">{formErr}</div>}
           <label className="growth-field">
             <span>日期</span>
             <input type="date" value={fDate} max={today} onChange={(e) => setFDate(e.target.value)} />

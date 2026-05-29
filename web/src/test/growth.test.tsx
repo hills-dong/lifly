@@ -85,6 +85,23 @@ describe('GrowthView with seeded records', () => {
     expect(heightCell.querySelector('.growth-metric-val')?.textContent).toBe('—');
   });
 
+  it('hides soft-deleted records', () => {
+    const withDeleted = [
+      ...records,
+      {
+        id: 'deleted-1',
+        tool_id: '00000000-0000-0000-0000-000000000203',
+        attributes: { date: '2025-01-01', height_cm: 100 },
+        status: 'deleted',
+        created_at: '',
+        updated_at: '',
+      } as DataObject,
+    ];
+    render(<GrowthView items={withDeleted} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
+    // The deleted record must not appear; row count stays at the active count.
+    expect(document.querySelectorAll('.growth-row').length).toBe(records.length);
+  });
+
   it('classifies measurements against WHO bands (chips render)', () => {
     render(<GrowthView items={records} toolId="00000000-0000-0000-0000-000000000203" birthDate="2020-03-12" sex="male" onChanged={() => {}} onSaveProfile={async () => {}} />);
     // At least some normal/low chips should appear given this child trends low.
